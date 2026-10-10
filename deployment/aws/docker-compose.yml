@@ -1,0 +1,75 @@
+# Ask Digi customer frontend: portal + its own Postgres + Caddy (automatic HTTPS). No Studio, no Strands. Open WebUI is NOT in this package: it is a separate,
+# existing instance that Digi connects to (see README.md, step 5).
+name: askdigi
+services:
+  caddy:
+    image: caddy:2-alpine
+    ports: ["80:80", "443:443"]
+    environment:
+      DIGI_DOMAIN: "${DIGI_DOMAIN:?set in .env}"
+      OWUI_ALLOWED_IP: "${OWUI_ALLOWED_IP:?set in .env}"
+      ACME_EMAIL: "${ACME_EMAIL:?set in .env}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [portal]
+    restart: unless-stopped
+
+  portal:
+    image: "${PORTAL_IMAGE:-digiworks-portal:release}"
+    environment:
+      DIGI_ROLE: customer
+      STACK_ID: "${TENANT_SLUG}"
+      BRAND_NAME: "${BRAND_NAME:-Ask Digi}"
+      BRAND_ORG: "${TENANT_NAME}"
+      BRAND_HOST: "${DIGI_DOMAIN}"
+      COOKIE_SECURE: "true"
+      PORTAL_INTERNAL_KEY: "${PORTAL_INTERNAL_KEY:?set in .env}"
+      DIGI_SECRET_KEY: "${DIGI_SECRET_KEY:?set in .env}"
+      DIGI_DATABASE_URL: "postgresql://digi_app:${DIGI_APP_PASSWORD}@postgres:5432/digi"
+      DIGI_MIGRATE_URL: "postgresql://digi_owner:${DIGI_OWNER_PASSWORD}@postgres:5432/digi"
+      DATA_DIR: /data
+      # the separate Open WebUI instance
+      OWUI_BASE_URL: "${OWUI_URL:?set in .env}"
+      OWUI_API_KEY: "${OWUI_ADMIN_TOKEN:?set in .env}"
+      OWUI_BASE_MODEL: "${OWUI_BASE_MODEL:-}"
+      OWUI_RUNTIME_EMAIL: "${OWUI_RUNTIME_EMAIL:-}"
+      OWUI_RUNTIME_PASSWORD: "${OWUI_RUNTIME_PASSWORD:-}"
+      OWUI_RUNTIME_POOL: "${OWUI_RUNTIME_POOL:-}"
+      CHAT_PER_MINUTE: "${CHAT_PER_MINUTE:-20}"
+      AI_DAILY_TURNS_PER_USER: "${AI_DAILY_TURNS_PER_USER:-300}"
+      ADMISSION_GLOBAL: "${ADMISSION_GLOBAL:-12}"
+      ADMISSION_PER_USER: "${ADMISSION_PER_USER:-2}"
+      JOB_LEASE_SECONDS: "20"
+      JOB_TEST_TYPES: "0"
+      # first-time setup (scripts/bootstrap in README step 4)
+      TENANT_SLUG: "${TENANT_SLUG}"
+      TENANT_NAME: "${TENANT_NAME}"
+      TENANT_HOSTNAMES: "${DIGI_DOMAIN}"
+      ADMIN_EMAIL: "${ADMIN_EMAIL}"
+      ADMIN_NAME: "${ADMIN_NAME:-Administrator}"
+    volumes: ["portal-data:/data"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${DIGI_PG_SUPERUSER_PASSWORD:?set in .env}"
+      DIGI_OWNER_PASSWORD: "${DIGI_OWNER_PASSWORD:?set in .env}"
+      DIGI_APP_PASSWORD: "${DIGI_APP_PASSWORD:?set in .env}"
+      OWUI_DB_PASSWORD: "${DIGI_PG_SUPERUSER_PASSWORD}"   # unused here; the init script still wants a value
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d digi"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes: { portal-data: {}, pgdata: {}, caddy-data: {}, caddy-config: {} }

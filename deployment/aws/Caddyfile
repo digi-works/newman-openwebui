@@ -1,0 +1,19 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$DIGI_DOMAIN} {
+	encode zstd gzip
+
+	# The tool API is for the Open WebUI server only (and still needs the shared key). Everyone else gets 403.
+	@internal path /api/internal/*
+	handle @internal {
+		@owui remote_ip {$OWUI_ALLOWED_IP}
+		handle @owui {
+			reverse_proxy portal:3000
+		}
+		respond "Forbidden" 403
+	}
+
+	reverse_proxy portal:3000
+}
