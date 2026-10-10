@@ -6,11 +6,14 @@ version: 0.1.0
 """
 
 import json
+import re
 from typing import Optional
 
 import requests
 from pydantic import BaseModel, Field
 
+# Only connected (mcp.*) tools may be called through this module; the name goes into the gateway URL.
+TOOL_NAME = re.compile(r"mcp\.[A-Za-z0-9_\-]+(\.[A-Za-z0-9_\-]+)*")
 
 class Tools:
     class Valves(BaseModel):
@@ -54,6 +57,8 @@ class Tools:
         :param tool: The full tool name, exactly as listed.
         :param arguments_json: The arguments as a JSON object string.
         """
+        if not TOOL_NAME.fullmatch(tool or ""):
+            return "Unknown tool. Use a full name exactly as list_connected_tools shows it, for example mcp.erp.get_invoice."
         try:
             args = json.loads(arguments_json or "{}")
             if not isinstance(args, dict):

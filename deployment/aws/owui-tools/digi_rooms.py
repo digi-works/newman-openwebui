@@ -6,6 +6,7 @@ version: 0.2.0
 """
 
 import json
+from html import escape
 from typing import Optional
 
 import requests
@@ -97,7 +98,7 @@ class Tools:
             buildings = body.get("buildings") or BUILDINGS
         except Exception:  # noqa: BLE001
             pass
-        options = "".join(f'<option value="{b}">{b}</option>' for b in buildings)
+        options = "".join(f'<option value="{escape(str(b))}">{escape(str(b))}</option>' for b in buildings)
         chips = "".join(f'<button type="button" class="chip" aria-pressed="false" data-need="{n}">{n}</button>' for n in NEEDS)
         body = f"""
 <div class="card">
@@ -193,11 +194,11 @@ valid();
                 items += (
                     '<div class="item"><div><b>{n}</b><div class="sub">{b} &middot; fits {c} &middot; {t}</div></div>'
                     '<button class="primary pick" data-sel=\'{s}\'>Request this room</button></div>'
-                ).format(n=rm["name"], b=rm["building"], c=rm["capacity"], t=tags, s=json.dumps(sel).replace("'", "&#39;"))
-            hint = f'<div class="sub" style="padding:12px 24px 0">{note}</div>' if note else ""
+                ).format(n=escape(str(rm["name"])), b=escape(str(rm["building"])), c=escape(str(rm["capacity"])), t=escape(str(tags)), s=escape(json.dumps(sel)))
+            hint = f'<div class="sub" style="padding:12px 24px 0">{escape(str(note))}</div>' if note else ""
             inner = f'{hint}<div class="list">{items}</div>'
         else:
-            inner = f'<div class="body" style="padding:24px"><b>No rooms are free for that time.</b><div class="sub" style="margin-top:6px">{note or "Try another time or date."}</div></div>'
+            inner = f'<div class="body" style="padding:24px"><b>No rooms are free for that time.</b><div class="sub" style="margin-top:6px">{escape(str(note)) if note else "Try another time or date."}</div></div>'
         extra_css = ".list{padding:8px 24px 20px}.item{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid #eceff5}.item:last-child{border-bottom:0}.sub{font-size:13px;color:#6b7690;margin-top:4px}.pick{padding:10px 16px;font-size:14px}"
         body = f'<style>{extra_css}</style><div class="card"><div class="head"><b>Available rooms</b><span>Step 2 of 2</span></div>{inner}</div>'
         script = r"""

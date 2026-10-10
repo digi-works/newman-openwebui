@@ -19,14 +19,14 @@ people ──https──> Caddy ──> Digi portal ──> Postgres (this serve
 
 ## 1. Prepare the server (once)
 ```bash
-sudo apt-get update && sudo apt-get install -y docker.io docker-compose-v2 python3 unzip
+sudo apt-get update && sudo apt-get install -y docker.io docker-compose-v2 python3 git
 sudo usermod -aG docker $USER      # log out and back in
 ```
 
-## 2. Copy the package and load the image
-From your computer: `scp askdigi-aws-*.zip ubuntu@<server-ip>:~` (use your key, `-i key.pem`). Then on the server:
+## 2. Get the package and load the image
+On the server (the repository is private: sign in with a GitHub account that has access, using a personal access token as the password):
 ```bash
-unzip askdigi-aws-*.zip && cd askdigi-aws-*
+git clone https://github.com/digi-works/newman-openwebui.git && cd newman-openwebui/deployment
 docker load -i image/digiworks-portal.tar.gz        # prints: Loaded image: digiworks-portal:release
 cd aws && cp .env.example .env && chmod 600 .env
 ```

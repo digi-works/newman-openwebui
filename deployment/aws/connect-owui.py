@@ -42,6 +42,19 @@ if env["OWUI_BASE_MODEL"] not in ids: sys.exit(f"model '{env['OWUI_BASE_MODEL']}
 print("2. runtime accounts ...")
 pool = json.loads(env["OWUI_RUNTIME_POOL"]) if env.get("OWUI_RUNTIME_POOL") else []
 have = {p["email"] for p in pool}; alpha = string.ascii_letters + string.digits
+
+def save_pool():
+    # written after every account, so a later failure never loses a password for an account that already exists
+    global lines
+    val = "OWUI_RUNTIME_POOL='" + json.dumps(pool, separators=(",", ":")) + "'"
+    out, done = [], False
+    for l in lines:
+        if l.startswith("OWUI_RUNTIME_POOL="): out.append(val); done = True
+        else: out.append(l)
+    if not done: out.append(val)
+    lines = out
+    env_path.write_text("\n".join(out).rstrip("\n") + "\n", encoding="utf8")
+
 for i in range(1, 4):
     email = f"digi-runtime-{i}@digi.local"
     if email in have: continue
@@ -49,13 +62,8 @@ for i in range(1, 4):
     s, r = call("POST", "/api/v1/auths/add", {"name": f"digi-runtime-{i}", "email": email, "password": pw, "role": "user"})
     if s != 200: sys.exit(f"could not create {email} ({s}): {r}. If it exists already, delete it in Open WebUI and re-run.")
     pool.append({"email": email, "password": pw})
-val = "OWUI_RUNTIME_POOL='" + json.dumps(pool, separators=(",", ":")) + "'"
-out, done = [], False
-for l in lines:
-    if l.startswith("OWUI_RUNTIME_POOL="): out.append(val); done = True
-    else: out.append(l)
-if not done: out.append(val)
-env_path.write_text("\n".join(out).rstrip("\n") + "\n", encoding="utf8"); print(f"   {len(pool)} accounts saved to .env")
+    save_pool()
+save_pool(); print(f"   {len(pool)} accounts saved to .env")
 
 e = dict(os.environ, OWUI_URL=base, OWUI_BASE_MODEL=env["OWUI_BASE_MODEL"], OWUI_ADMIN_TOKEN=env["OWUI_ADMIN_TOKEN"])
 print("3. tool modules ...")
