@@ -51,7 +51,7 @@ Wait about a minute, then open `https://DIGI_DOMAIN` and sign in with `ADMIN_EMA
    ```bash
    python3 connect-owui.py
    ```
-   It checks the token and the model, creates 3 shared runtime accounts (written into `.env`), installs the five Digi tool modules in Open WebUI pointing at `https://DIGI_DOMAIN`, and creates the **Digi** model.
+   It checks the token and the model, creates 3 shared runtime accounts (written into `.env` as `OWUI_RUNTIME_POOL`, with the first one also as `OWUI_RUNTIME_EMAIL`/`OWUI_RUNTIME_PASSWORD`), installs the five Digi tool modules in Open WebUI pointing at `https://DIGI_DOMAIN`, and creates the **Digi** model.
 4. Apply it and reload Caddy's allow-list:
    ```bash
    docker compose up -d

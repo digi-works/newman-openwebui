@@ -3,7 +3,7 @@
 
 What it does (all idempotent, safe to re-run):
   1. checks OWUI_URL answers and OWUI_ADMIN_TOKEN is an admin
-  2. creates 3 shared runtime accounts in Open WebUI and writes OWUI_RUNTIME_POOL into .env (Digi signs in as these; people have no Open WebUI accounts)
+  2. creates 3 shared runtime accounts in Open WebUI and writes OWUI_RUNTIME_POOL (plus OWUI_RUNTIME_EMAIL/PASSWORD = the first one) into .env (Digi signs in as these; people have no Open WebUI accounts)
   3. installs the five Digi tool modules in Open WebUI, pointing back at https://DIGI_DOMAIN with PORTAL_INTERNAL_KEY
   4. creates the "Digi" model on OWUI_BASE_MODEL
 Then restart the portal:  docker compose up -d portal
@@ -43,17 +43,21 @@ print("2. runtime accounts ...")
 pool = json.loads(env["OWUI_RUNTIME_POOL"]) if env.get("OWUI_RUNTIME_POOL") else []
 have = {p["email"] for p in pool}; alpha = string.ascii_letters + string.digits
 
-def save_pool():
-    # written after every account, so a later failure never loses a password for an account that already exists
+def set_env(key, val):
     global lines
-    val = "OWUI_RUNTIME_POOL='" + json.dumps(pool, separators=(",", ":")) + "'"
     out, done = [], False
     for l in lines:
-        if l.startswith("OWUI_RUNTIME_POOL="): out.append(val); done = True
+        if l.startswith(key + "="): out.append(f"{key}={val}"); done = True
         else: out.append(l)
-    if not done: out.append(val)
+    if not done: out.append(f"{key}={val}")
     lines = out
-    env_path.write_text("\n".join(out).rstrip("\n") + "\n", encoding="utf8")
+
+def save_pool():
+    # written after every account, so a later failure never loses a password for an account that already exists
+    set_env("OWUI_RUNTIME_POOL", "'" + json.dumps(pool, separators=(",", ":")) + "'")
+    # agent and tool management sign in with a single account, not the pool: use the first one
+    if pool: set_env("OWUI_RUNTIME_EMAIL", pool[0]["email"]); set_env("OWUI_RUNTIME_PASSWORD", pool[0]["password"])
+    env_path.write_text("\n".join(lines).rstrip("\n") + "\n", encoding="utf8")
 
 for i in range(1, 4):
     email = f"digi-runtime-{i}@digi.local"
