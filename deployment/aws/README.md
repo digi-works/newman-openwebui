@@ -68,7 +68,7 @@ If something fails:
 | "AI connection" unhealthy | Server cannot reach `OWUI_URL`, or an account was deleted: re-run `connect-owui.py` |
 
 ## Optional: copy rooms, events, classes and bookings from Supabase
-Copies buildings, rooms, events, the class schedule (courses become events so rooms show as busy during classes) and room bookings from the Supabase pilot database (schema `newmann`) into Digi. Supabase is only read. Safe to re-run: rows already copied are skipped. Run it in this folder after step 4, using the Supabase **direct connection** string (Supabase > Project Settings > Database):
+Copies buildings, rooms, events, the class schedule (courses become events so rooms show as busy during classes) and room bookings from the Supabase pilot database (schema `newmann`) into Digi. Supabase is only read. Safe to re-run: rows already copied are skipped. Run it in this folder after step 4, using the Supabase **Session pooler** connection string (Supabase > Connect > Session pooler; the direct connection is IPv6 only and most AWS servers cannot reach it):
 ```bash
 # 1. dry run: prints what it would copy and every row it would skip, writes nothing
 docker compose run --rm -v "$PWD/scripts:/import:ro" -e SUPABASE_DB_URL='postgresql://...' portal node /import/import-supabase.mjs --dry-run
