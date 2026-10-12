@@ -67,6 +67,16 @@ If something fails:
 | Chat answers but never calls tools | Open WebUI cannot reach `https://DIGI_DOMAIN/api/internal/...`: check DNS/firewall and that `OWUI_ALLOWED_IP` is the IP Open WebUI calls *from* (`docker compose logs caddy` shows 403s) |
 | "AI connection" unhealthy | Server cannot reach `OWUI_URL`, or an account was deleted: re-run `connect-owui.py` |
 
+## Optional: copy rooms, events, classes and bookings from Supabase
+Copies buildings, rooms, events, the class schedule (courses become events so rooms show as busy during classes) and room bookings from the Supabase pilot database (schema `newmann`) into Digi. Supabase is only read. Safe to re-run: rows already copied are skipped. Run it in this folder after step 4, using the Supabase **direct connection** string (Supabase > Project Settings > Database):
+```bash
+# 1. dry run: prints what it would copy and every row it would skip, writes nothing
+docker compose run --rm -v "$PWD/scripts:/import:ro" -e SUPABASE_DB_URL='postgresql://...' portal node /import/import-supabase.mjs --dry-run
+# 2. if the report looks right, the real copy (all or nothing)
+docker compose run --rm -v "$PWD/scripts:/import:ro" -e SUPABASE_DB_URL='postgresql://...' portal node /import/import-supabase.mjs
+```
+Skipped rows are listed with the reason: a room whose building is missing, an occurrence without times, an archived event, or a booking that overlaps one already holding that room (approved bookings are copied first, so they win). Booking times are read as the university's local time.
+
 ## 6. Running it
 - Logs: `docker compose logs -f portal`. Update: load the new image, `docker compose up -d portal` (migrations run at start).
 - Backup (daily, from cron): `docker compose exec -T postgres pg_dump -U postgres -Fc digi > digi-$(date +%F).dump`, then copy it off the server (S3). Also keep `.env`. Restore: `pg_restore -U postgres -d digi --clean`.
