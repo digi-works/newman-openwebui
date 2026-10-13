@@ -1,8 +1,11 @@
-"""Creates (or updates) Digi, the campus chatbot worker, in Open WebUI.
+"""Creates Digi, the campus chatbot worker, in Open WebUI.
+
+If Digi already exists it is left exactly as it is in Open WebUI (instructions, base model, tools, access), so changes made there survive
+a re-run. --reset (or DIGI_RESET=1) overwrites it with the definition below.
 
 Also removes the earlier "campus-hero" model if it still exists (Open WebUI cannot rename an id).
 
-Usage: python scripts/create-digi.py
+Usage: python scripts/create-digi.py [--reset]
 Reads OWUI_ADMIN_TOKEN (or OWUI_API_KEY) from .env and OWUI_URL (default http://localhost:3001).
 """
 import json, os, pathlib, sys, urllib.request, urllib.error
@@ -66,14 +69,21 @@ def call(method, path, body=None):
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode()[:300]
 
-status, res = call("POST", "/api/v1/models/create", payload)
-if status == 200 and res:
-    print("created digi")
-else:
+RESET = "--reset" in sys.argv or os.environ.get("DIGI_RESET") == "1"
+s0, current = call("GET", "/api/v1/models/model?id=digi")
+if s0 == 200 and isinstance(current, dict) and current.get("id") == "digi":
+    if not RESET:
+        print(f"digi exists (base model {current.get('base_model_id')}), left as is; use --reset to overwrite it from this script")
+        sys.exit(0)
     status2, res2 = call("POST", "/api/v1/models/model/update", payload)
-    print("create ->", status, "| update ->", status2, "" if status2 == 200 else res2)
+    print("digi reset from script ->", status2, "" if status2 == 200 else res2)
     if status2 != 200:
-        sys.exit("could not create or update digi; leaving campus-hero in place")
+        sys.exit("could not reset digi")
+else:
+    status, res = call("POST", "/api/v1/models/create", payload)
+    if not (status == 200 and res):
+        sys.exit(f"could not create digi ({status}): {res}")
+    print("created digi")
 
 # only remove the old model once the new one is confirmed to exist
 s, models = call("GET", "/api/models")

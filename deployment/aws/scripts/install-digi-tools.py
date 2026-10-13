@@ -1,6 +1,10 @@
-"""Installs (or updates) the Digi tool modules in Open WebUI, sets their valves, and points the Digi agent at them.
+"""Installs the Digi tool modules in Open WebUI, sets their valves, and points the Digi agent at them.
 
-Usage: python scripts/install-digi-tools.py
+Changes made in Open WebUI are kept: a module that already exists keeps its code, access and other valve values (only portal_url and
+internal_key are corrected if they differ), and the Digi agent only gains modules created by this run. --reset (or DIGI_RESET=1) restores
+everything from this repo instead.
+
+Usage: python scripts/install-digi-tools.py [--reset]
        python scripts/install-digi-tools.py --prefix t_ --portal-url http://digiworks-studio:3000 --key-name STUDIO_INTERNAL_KEY
        (the second form installs a separate set for the platform test stack: modules named t_digi_rooms and so on, calling the Studio instance)
 Reads OWUI_ADMIN_TOKEN (or OWUI_API_KEY) and PORTAL_INTERNAL_KEY from .env. OWUI_URL defaults to http://localhost:3001.
@@ -18,6 +22,7 @@ token = os.environ.get("OWUI_ADMIN_TOKEN") or env.get("OWUI_ADMIN_TOKEN") or env
 def arg(name, default):
     return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else default
 PREFIX = arg("--prefix", "")
+RESET = "--reset" in sys.argv or os.environ.get("DIGI_RESET") == "1"
 PORTAL_URL = arg("--portal-url", "http://digiworks-portal:3000")
 key = env.get(arg("--key-name", "PORTAL_INTERNAL_KEY"), "")
 base = os.environ.get("OWUI_URL", "http://localhost:3001").rstrip("/")
@@ -41,18 +46,29 @@ def call(method, path, body=None):
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode()[:400]
 
+created = []
 for tid0, name, fname, desc in MODULES:
     tid = PREFIX + tid0
     payload = {"id": tid, "name": (name + " (test stack)") if PREFIX else name, "content": root.joinpath("owui-tools", fname).read_text(encoding="utf-8"), "meta": {"description": desc},
                "access_grants": [{"principal_type": "user", "principal_id": "*", "permission": "read"}]}
-    s, r = call("POST", "/api/v1/tools/create", payload)
-    if s != 200:
+    exists = call("GET", f"/api/v1/tools/id/{tid}")[0] == 200
+    if not exists:
+        s, r = call("POST", "/api/v1/tools/create", payload)
+        if s != 200: sys.exit(f"{tid} create -> {s} {r}")
+        print(tid, "created"); created.append(tid)
+    elif RESET:
         s, r = call("POST", f"/api/v1/tools/id/{tid}/update", payload)
-        print(tid, "update ->", s, "" if s == 200 else r)
+        print(tid, "reset from repo ->", s, "" if s == 200 else r)
     else:
-        print(tid, "created")
-    s, r = call("POST", f"/api/v1/tools/id/{tid}/valves/update", {"portal_url": PORTAL_URL, "internal_key": key})
-    print(tid, "valves ->", s, "" if s == 200 else r)
+        print(tid, "exists, left as is")
+    # the connection back to the portal must be right whatever else was changed; other valve values are kept
+    s, valves = call("GET", f"/api/v1/tools/id/{tid}/valves")
+    valves = valves if s == 200 and isinstance(valves, dict) and not RESET else {}
+    if valves.get("portal_url") == PORTAL_URL and valves.get("internal_key") == key:
+        print(tid, "valves already correct")
+    else:
+        s, r = call("POST", f"/api/v1/tools/id/{tid}/valves/update", {**valves, "portal_url": PORTAL_URL, "internal_key": key})
+        print(tid, "valves ->", s, "" if s == 200 else r)
 
 if PREFIX:
     sys.exit(0)
@@ -60,7 +76,11 @@ if PREFIX:
 s, model = call("GET", "/api/v1/models/model?id=digi")
 if s == 200 and isinstance(model, dict):
     meta = model.get("meta") or {}
-    meta["toolIds"] = [m[0] for m in MODULES]
+    have = meta.get("toolIds") or []
+    want = [m[0] for m in MODULES] if RESET else have + [t for t in created if t not in have]
+    if want == have:
+        print("agent tools unchanged"); sys.exit(0)
+    meta["toolIds"] = want
     form = {k: model.get(k) for k in ("id", "base_model_id", "name", "params", "access_grants", "is_active")}
     form["meta"] = meta
     form = {k: v for k, v in form.items() if v is not None}

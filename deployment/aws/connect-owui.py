@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
-"""Connects this Digi deployment to a separate Open WebUI instance. Run from this folder, on any machine that can reach OWUI_URL:  python3 connect-owui.py
+"""Connects this Digi deployment to a separate Open WebUI instance. Run from this folder, on any machine that can reach OWUI_URL:  python3 connect-owui.py [--reset]
 
-What it does (all idempotent, safe to re-run):
+What it does (safe to re-run):
   1. checks OWUI_URL answers and OWUI_ADMIN_TOKEN is an admin
   2. creates 3 shared runtime accounts in Open WebUI and writes OWUI_RUNTIME_POOL (plus OWUI_RUNTIME_EMAIL/PASSWORD = the first one) into .env (Digi signs in as these; people have no Open WebUI accounts)
-  3. installs the five Digi tool modules in Open WebUI, pointing back at https://DIGI_DOMAIN with PORTAL_INTERNAL_KEY
-  4. creates the "Digi" model on OWUI_BASE_MODEL
+  3. creates the "Digi" model on OWUI_BASE_MODEL
+  4. installs the five Digi tool modules in Open WebUI, pointing back at https://DIGI_DOMAIN with PORTAL_INTERNAL_KEY
+Anything that already exists in Open WebUI is left as it is there, so changes made in Open WebUI survive a re-run; only the tools' portal
+address and key are corrected. --reset overwrites Digi and its tools with the versions in this repo.
 Then restart the portal:  docker compose up -d portal
 No secret is printed.
 """
 import json, os, pathlib, secrets, string, subprocess, sys, urllib.error, urllib.request
+sys.stdout.reconfigure(line_buffering=True)  # keep our lines in order with the sub-scripts' output
 
 here = pathlib.Path(__file__).resolve().parent
+RESET = "--reset" in sys.argv
 env_path = here / ".env"
 lines = env_path.read_text(encoding="utf8").split("\n")
 env = {}
@@ -69,9 +73,10 @@ for i in range(1, 4):
     save_pool()
 save_pool(); print(f"   {len(pool)} accounts saved to .env")
 
-e = dict(os.environ, OWUI_URL=base, OWUI_BASE_MODEL=env["OWUI_BASE_MODEL"], OWUI_ADMIN_TOKEN=env["OWUI_ADMIN_TOKEN"])
-print("3. tool modules ...")
-subprocess.run([sys.executable, str(here / "scripts" / "install-digi-tools.py"), "--portal-url", "https://" + env["DIGI_DOMAIN"]], env=e, check=True)
-print("4. Digi model ...")
+e = dict(os.environ, OWUI_URL=base, OWUI_BASE_MODEL=env["OWUI_BASE_MODEL"], OWUI_ADMIN_TOKEN=env["OWUI_ADMIN_TOKEN"], DIGI_RESET="1" if RESET else "0")
+if RESET: print("   --reset: Digi and its tools will be overwritten with the versions in this repo")
+print("3. Digi model ...")
 subprocess.run([sys.executable, str(here / "scripts" / "create-digi.py")], env=e, check=True)
+print("4. tool modules ...")
+subprocess.run([sys.executable, str(here / "scripts" / "install-digi-tools.py"), "--portal-url", "https://" + env["DIGI_DOMAIN"]], env=e, check=True)
 print("\nDone. Now:  docker compose up -d portal   then sign in and check Settings > AI connection.")

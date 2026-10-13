@@ -52,6 +52,7 @@ Wait about a minute, then open `https://DIGI_DOMAIN` and sign in with `ADMIN_EMA
    python3 connect-owui.py
    ```
    It checks the token and the model, creates 3 shared runtime accounts (written into `.env` as `OWUI_RUNTIME_POOL`, with the first one also as `OWUI_RUNTIME_EMAIL`/`OWUI_RUNTIME_PASSWORD`), installs the five Digi tool modules in Open WebUI pointing at `https://DIGI_DOMAIN`, and creates the **Digi** model.
+   Safe to re-run: Digi, its tools and their settings are left as they are in Open WebUI, so changes made there are kept (only the tools' portal address and key are corrected). To overwrite them with the versions in this repo, run `python3 connect-owui.py --reset`. For a normal update you do not need this step at all.
 4. Apply it and reload Caddy's allow-list:
    ```bash
    docker compose up -d
