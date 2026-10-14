@@ -1,0 +1,58 @@
+--- /private/tmp/claude-502/-Users-aakashjaiswal-newman-openwebui/87147165-6c53-4927-8f43-b408075eb937/scratchpad/fs/app/src/components/room-request-form.tsx	2026-10-08 22:25:55
++++ room-request-form.tsx	2026-10-14 13:20:33
+@@ -17,6 +17,10 @@
+   const [error, setError] = useState("");
+   const [result, setResult] = useState<{ rooms: Room[]; note: string; q: Query } | null>(null);
+   const [done, setDone] = useState<{ ref: string; room: string; q: Query } | null>(null);
++  // Results belong to the search that produced them. Once the form changes they no longer match it, so they go,
++  // and a request can never use an older search's date, time or size (QA DEF-11, DEF-12).
++  const [stale, setStale] = useState(false);
++  const clearResults = () => { if (result) { setResult(null); setStale(true); } };
+ 
+   async function search(e: React.FormEvent<HTMLFormElement>) {
+     e.preventDefault();
+@@ -26,7 +30,7 @@
+       people: Number(f.get("people")), building: String(f.get("building") ?? ""), needs: chosen,
+     };
+     if (!q.purpose) { setError("Say what the booking is for."); return; }
+-    setBusy("search"); setError(""); setResult(null);
++    setBusy("search"); setError(""); setResult(null); setStale(false);
+     const res = await fetch("/api/rooms/search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(q) }).catch(() => null);
+     const out = res ? await res.json().catch(() => ({})) : {};
+     setBusy(null);
+@@ -69,7 +73,7 @@
+         <p className="text-sm text-muted-foreground">Tell us when and how many, see what is free, and ask for a room. Requests hold the room for a few days while an approver decides.</p>
+       </div>
+ 
+-      <form onSubmit={search} className="space-y-4 rounded-2xl border bg-card p-5">
++      <form onSubmit={search} onChange={clearResults} onInvalidCapture={clearResults} className="space-y-4 rounded-2xl border bg-card p-5">
+         <div className="space-y-1.5"><label htmlFor="purpose" className="text-sm font-medium">What is the booking for?</label><Input id="purpose" name="purpose" required maxLength={200} placeholder="Study group, club meeting…" /></div>
+         <div className="grid gap-4 sm:grid-cols-4">
+           <div className="space-y-1.5"><label htmlFor="date" className="text-sm font-medium">Date</label><Input id="date" name="date" type="date" required min={today} defaultValue={today} /></div>
+@@ -85,18 +89,24 @@
+           <span className="text-sm font-medium">Anything the room needs?</span>
+           <div className="flex flex-wrap gap-2">
+             {needs.map((n) => (
+-              <button type="button" key={n} aria-pressed={chosen.includes(n)} onClick={() => setChosen((c) => (c.includes(n) ? c.filter((x) => x !== n) : [...c, n]))}
++              <button type="button" key={n} aria-pressed={chosen.includes(n)} onClick={() => { clearResults(); setChosen((c) => (c.includes(n) ? c.filter((x) => x !== n) : [...c, n])); }}
+                 className={cn("rounded-full border px-3 py-1 text-sm transition-colors", chosen.includes(n) ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted")}>{n}</button>
+             ))}
+           </div>
+         </div>
++        {stale && <p role="status" className="rounded-lg border bg-muted px-3 py-2 text-sm text-muted-foreground">You changed the search. Press Find available rooms again to see what is free.</p>}
+         {error && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+         <Button type="submit" disabled={busy !== null}>{busy === "search" && <Loader2 className="animate-spin" />} Find available rooms</Button>
+       </form>
+ 
+       {result && (
+         <section className="rounded-2xl border bg-card">
+-          <div className="border-b px-5 py-3.5 text-sm font-semibold">Available rooms</div>
++          <div className="border-b px-5 py-3.5 text-sm font-semibold">
++            Available rooms
++            <span className="font-normal text-muted-foreground">
++              {" · "}{new Date(result.q.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}, {result.q.start}–{result.q.end}, {result.q.people} {result.q.people === 1 ? "person" : "people"}
++            </span>
++          </div>
+           {result.note && <p className="px-5 pt-3 text-sm text-muted-foreground">{result.note}</p>}
+           {result.rooms.length === 0 ? (
+             <p className="px-5 py-8 text-center text-sm text-muted-foreground">No rooms are free for that time. Try another time or fewer needs.</p>
