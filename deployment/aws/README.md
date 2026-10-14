@@ -67,6 +67,7 @@ If something fails:
 | "model ... is not in that Open WebUI" | Set `OWUI_BASE_MODEL` to an id it prints |
 | Chat answers but never calls tools | Open WebUI cannot reach `https://DIGI_DOMAIN/api/internal/...`: check DNS/firewall and that `OWUI_ALLOWED_IP` is the IP Open WebUI calls *from* (`docker compose logs caddy` shows 403s) |
 | "AI connection" unhealthy | Server cannot reach `OWUI_URL`, or an account was deleted: re-run `connect-owui.py` |
+| Nobody can sign in to reset a password (e.g. the only Admin is locked out) | Reset it from the server, keeping the single quotes: `docker compose run --rm -v "$PWD/scripts:/import:ro" -e EMAIL=admin@example.edu -e PASSWORD='new password' portal node /import/reset-password.mjs`. Leave out `PASSWORD` to get a random temporary one instead (see the script's header). It also clears a sign-in lockout and signs the account out everywhere |
 
 ## Optional: copy rooms, events, classes and bookings from Supabase
 Copies buildings, rooms, events, the class schedule (courses become events so rooms show as busy during classes) and room bookings from the Supabase pilot database (schema `newmann`) into Digi. Supabase is only read. Safe to re-run: rows already copied are skipped. Run it in this folder after step 4, using the Supabase **Session pooler** connection string (Supabase > Connect > Session pooler; the direct connection is IPv6 only and most AWS servers cannot reach it):
