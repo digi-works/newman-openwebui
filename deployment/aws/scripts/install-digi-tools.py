@@ -1,10 +1,11 @@
 """Installs the Digi tool modules in Open WebUI, sets their valves, and points the Digi agent at them.
 
 Changes made in Open WebUI are kept: a module that already exists keeps its code, access and other valve values (only portal_url and
-internal_key are corrected if they differ), and the Digi agent only gains modules created by this run. --reset (or DIGI_RESET=1) restores
+internal_key are corrected if they differ), and the Digi agent only gains modules created by this run. --update digi_rooms[,digi_bookings]
+replaces just those modules' code with the repo version (their name, access and valves are kept). --reset (or DIGI_RESET=1) restores
 everything from this repo instead.
 
-Usage: python scripts/install-digi-tools.py [--reset]
+Usage: python scripts/install-digi-tools.py [--update digi_rooms] [--reset]
        python scripts/install-digi-tools.py --prefix t_ --portal-url http://digiworks-studio:3000 --key-name STUDIO_INTERNAL_KEY
        (the second form installs a separate set for the platform test stack: modules named t_digi_rooms and so on, calling the Studio instance)
 Reads OWUI_ADMIN_TOKEN (or OWUI_API_KEY) and PORTAL_INTERNAL_KEY from .env. OWUI_URL defaults to http://localhost:3001.
@@ -23,9 +24,12 @@ def arg(name, default):
     return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else default
 PREFIX = arg("--prefix", "")
 RESET = "--reset" in sys.argv or os.environ.get("DIGI_RESET") == "1"
+UPDATE = {t.strip() for t in arg("--update", "").split(",") if t.strip()}
 PORTAL_URL = arg("--portal-url", "http://digiworks-portal:3000")
 key = env.get(arg("--key-name", "PORTAL_INTERNAL_KEY"), "")
 base = os.environ.get("OWUI_URL", "http://localhost:3001").rstrip("/")
+if UPDATE - {m for m in ("digi_rooms", "digi_bookings", "digi_approvals", "digi_memory", "digi_mcp")}:
+    sys.exit(f"--update: unknown module(s) {', '.join(sorted(UPDATE - {'digi_rooms', 'digi_bookings', 'digi_approvals', 'digi_memory', 'digi_mcp'}))}")
 if not token or len(key) < 16:
     sys.exit("Need an admin token and PORTAL_INTERNAL_KEY in .env")
 
@@ -56,6 +60,12 @@ for tid0, name, fname, desc in MODULES:
         s, r = call("POST", "/api/v1/tools/create", payload)
         if s != 200: sys.exit(f"{tid} create -> {s} {r}")
         print(tid, "created"); created.append(tid)
+    elif tid0 in UPDATE and not RESET:
+        s, cur = call("GET", f"/api/v1/tools/id/{tid}")
+        cur = cur if s == 200 and isinstance(cur, dict) else {}
+        keep = {k: cur[k] for k in ("id", "name", "meta", "access_grants") if cur.get(k) is not None}
+        s, r = call("POST", f"/api/v1/tools/id/{tid}/update", {**payload, **keep, "content": payload["content"]})
+        print(tid, "code updated from repo ->", s, "" if s == 200 else r)
     elif RESET:
         s, r = call("POST", f"/api/v1/tools/id/{tid}/update", payload)
         print(tid, "reset from repo ->", s, "" if s == 200 else r)

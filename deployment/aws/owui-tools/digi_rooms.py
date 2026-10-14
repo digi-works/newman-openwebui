@@ -1,12 +1,14 @@
 """
 title: Digi Rooms
 author: Digiworks
-description: Room request form, available-room search and room list for Digi (Newman University). Calls the Digi tool gateway; Digi decides who may use it.
-version: 0.2.0
+description: Room request form, available-room search, single-room availability check and room list for Digi (Newman University). Calls the Digi tool gateway; Digi decides who may use it.
+version: 0.3.0
 """
 
 import json
+from datetime import datetime
 from html import escape
+from zoneinfo import ZoneInfo
 from typing import Optional
 
 import requests
@@ -209,13 +211,83 @@ document.querySelectorAll(".pick").forEach((b) => b.addEventListener("click", ()
   parent.postMessage({ type: "input:prompt:submit", text }, "*");
 }));
 """
-        return _html(_page(body, script)), {"status": "displayed", "step": 2, "rooms_found": len(rooms), "writes_performed": False}
+        # the model only sees this dict, not the card, so name the rooms: otherwise it cannot tell which ones are free
+        free = [str(rm["name"]) for rm in rooms]
+        return _html(_page(body, script)), {
+            "status": "displayed", "step": 2, "rooms_found": len(rooms), "free_rooms_shown": free, "note": note,
+            "important": "Only the rooms in free_rooms_shown are known to be free. A room missing from it may be taken; use check_room_availability before saying anything about a specific room.",
+            "writes_performed": False,
+        }
+
+    # ------------------------------------------------------------------ one room
+    def _find_room(self, room: str, md: Optional[dict]):
+        """The room's listing (name, building, capacity), looked up by name ignoring case, spaces and dashes."""
+        want = "".join(ch for ch in room.lower() if ch.isalnum())
+        match = lambda items: next((i for i in items if "".join(ch for ch in str(i.get("name", "")).lower() if ch.isalnum()) == want), None)
+        code, body = self._call("rooms.list", {"building": "", "min_capacity": 0}, md)
+        if code != 200:
+            return code, body, None
+        hit = match(body.get("items", []))
+        if hit:
+            return code, body, hit
+        # the full list is capped, so look building by building
+        code, form = self._call("rooms.form", {}, md)
+        for b in form.get("buildings", []) if code == 200 else []:
+            c2, b2 = self._call("rooms.list", {"building": b, "min_capacity": 0}, md)
+            hit = match(b2.get("items", [])) if c2 == 200 else None
+            if hit:
+                return c2, b2, hit
+        return 200, {}, None
+
+    def check_room_availability(self, room: str, date: str, start_time: str, end_time: str, __metadata__: Optional[dict] = None) -> str:
+        """
+        Check whether ONE specific room is free at a date and time, using the same rules as booking (events and waiting or approved
+        requests both make a room busy). Use it whenever someone asks if a named room is free or available, and before saying any
+        specific room is free or taken. Never answer that from memory, from list_rooms, or from earlier messages.
+        :param room: The room's name, e.g. D254.
+        :param date: Date as YYYY-MM-DD.
+        :param start_time: Start time as 24-hour HH:MM.
+        :param end_time: End time as 24-hour HH:MM. If the person gave no end time, ask for it first.
+        """
+        try:
+            # the search does not refuse past times (only a request does), so check here; Newman runs on Central time
+            if datetime.fromisoformat(f"{date}T{end_time}").replace(tzinfo=ZoneInfo("America/Chicago")) <= datetime.now(ZoneInfo("America/Chicago")):
+                return f"{date} {start_time}-{end_time} has already passed, so {room} cannot be booked then. Ask for a future date or time."
+        except ValueError:
+            return "Give the date as YYYY-MM-DD and the times as 24-hour HH:MM."
+        try:
+            code, body, hit = self._find_room(room, __metadata__)
+            if code != 200:
+                return body.get("error", "I cannot look up rooms for this account.")
+            if not hit:
+                return f"I could not find a room called {room}. Do not guess; ask the person to check the room name, or use list_rooms."
+            name, building, capacity = str(hit["name"]), str(hit["building"]), int(hit["capacity"])
+            # the booking engine's own search, narrowed to this room's building and size so the room ranks first among what is free
+            code, res = self._call("rooms.search", {"date": date, "start_time": start_time, "end_time": end_time, "people": capacity, "building": building, "needs": []}, __metadata__)
+            if code in (400, 403, 409):
+                return res.get("error", "I cannot check availability for this account.")
+            if code != 200:
+                raise RuntimeError(code)
+        except Exception as e:  # noqa: BLE001
+            return f"I could not check {room} just now ({type(e).__name__}). Do not say whether it is free; ask the person to try again in a moment."
+        rooms = res.get("rooms", [])
+        if any(str(r.get("name")) == name for r in rooms):
+            return (f"{name} ({building}, holds {capacity}) is FREE on {date} from {start_time} to {end_time}. Nothing is held yet: "
+                    "it is only held once a request is made, and every request still needs staff approval.")
+        crowded = len(rooms) >= 6 and all(int(r.get("capacity", 0)) == capacity for r in rooms)
+        if crowded:
+            return (f"I could not confirm whether {name} is free on {date} from {start_time} to {end_time}. Do not say it is free. "
+                    "Offer to show the free rooms for that time instead (show_room_request_form).")
+        others = ", ".join([str(r.get("name")) for r in rooms if str(r.get("building")) == building][:3])
+        return (f"{name} is NOT free on {date} from {start_time} to {end_time}: an event or another request already holds it. "
+                f"Do not say it is free.{' Free rooms like it in ' + building + ': ' + others + '.' if others else ''}")
 
     # ------------------------------------------------------------------ read-only lookup
     def list_rooms(self, building: str = "", min_capacity: int = 0, __metadata__: Optional[dict] = None) -> str:
         """
         List bookable rooms on campus with building, capacity and features. Use for questions like
-        "what rooms are in the Library" or "rooms that hold 30 people". Read only.
+        "what rooms are in the Library" or "rooms that hold 30 people". Read only. It does not say whether a room is free:
+        use check_room_availability for that.
         :param building: Building name to filter by, or empty for all.
         :param min_capacity: Smallest capacity wanted, or 0 for any.
         """

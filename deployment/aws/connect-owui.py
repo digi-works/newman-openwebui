@@ -7,7 +7,8 @@ What it does (safe to re-run):
   3. creates the "Digi" model on OWUI_BASE_MODEL
   4. installs the five Digi tool modules in Open WebUI, pointing back at https://DIGI_DOMAIN with PORTAL_INTERNAL_KEY
 Anything that already exists in Open WebUI is left as it is there, so changes made in Open WebUI survive a re-run; only the tools' portal
-address and key are corrected. --reset overwrites Digi and its tools with the versions in this repo.
+address and key are corrected. --update digi_rooms (comma separated) replaces just those tool modules' code with this repo's version,
+keeping everything else. --reset overwrites Digi and its tools with the versions in this repo.
 Then restart the portal:  docker compose up -d portal
 No secret is printed.
 """
@@ -78,5 +79,6 @@ if RESET: print("   --reset: Digi and its tools will be overwritten with the ver
 print("3. Digi model ...")
 subprocess.run([sys.executable, str(here / "scripts" / "create-digi.py")], env=e, check=True)
 print("4. tool modules ...")
-subprocess.run([sys.executable, str(here / "scripts" / "install-digi-tools.py"), "--portal-url", "https://" + env["DIGI_DOMAIN"]], env=e, check=True)
+update = ["--update", sys.argv[sys.argv.index("--update") + 1]] if "--update" in sys.argv[:-1] else []
+subprocess.run([sys.executable, str(here / "scripts" / "install-digi-tools.py"), "--portal-url", "https://" + env["DIGI_DOMAIN"], *update], env=e, check=True)
 print("\nDone. Now:  docker compose up -d portal   then sign in and check Settings > AI connection.")
