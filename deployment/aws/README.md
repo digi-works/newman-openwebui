@@ -105,7 +105,7 @@ Run from the `deployment/aws` folder. `.env` and the data volumes are never touc
    ```
 3. If the update changed Digi's tool modules (listed under **This update** below), update just those in Open WebUI. Their name, access and settings there are kept:
    ```bash
-   python3 connect-owui.py --update digi_rooms
+   python3 connect-owui.py --update digi_rooms,digi_bookings
    ```
    Do not use `--reset` for an update: it overwrites Digi and all its tools with this repo's versions, undoing anything changed in Open WebUI.
 4. If the update changed Digi's instructions (listed under **This update**), add the new lines by hand in Open WebUI > Workspace > Models > Digi > System prompt. `connect-owui.py` never changes the prompt of an existing Digi.
@@ -114,7 +114,7 @@ Run from the `deployment/aws` folder. `.env` and the data volumes are never touc
 ### This update
 - Portal image: QA fixes (room request form no longer books an older search's date, Approvals page points to room requests waiting on Bookings, Settings > AI connection loads at once), and tables in chat replies.
 - `docker-compose.yml`: Strands' health check now fails at once (Strands is not part of this package).
-- Tool modules: `digi_rooms` (new `check_room_availability`, so Digi checks a named room before saying it is free). Run step 3 with `--update digi_rooms`.
+- Tool modules: `digi_rooms` (new `check_room_availability`, so Digi checks a named room before saying it is free) and `digi_bookings` (Digi calls a waiting request "Waiting", as the Bookings page does, not "Tentative"). Run step 3 with `--update digi_rooms,digi_bookings`.
 - Digi's instructions: add this line under "Room requests" (step 4):
   > - When someone asks whether a specific room is free, call check_room_availability with the room, date, start and end time (ask for the end time if they did not give one). Never say a specific room is free or taken without it, and repeat its answer as it is.
 

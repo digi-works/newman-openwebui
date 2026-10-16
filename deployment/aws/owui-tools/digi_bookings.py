@@ -2,13 +2,17 @@
 title: Digi Bookings
 author: Digiworks
 description: A person's bookings, plus requests and cancellations that Digi prepares and the person confirms in Digi.
-version: 0.2.0
+version: 0.2.1
 """
 
 from typing import Optional
 
 import requests
 from pydantic import BaseModel, Field
+
+
+# Status words as the Bookings page shows them.
+SHOWN = {"Tentative": "Waiting"}
 
 
 class Tools:
@@ -37,8 +41,11 @@ class Tools:
         List room bookings. People who may not see every booking get only their own. Use for "what is booked on 2026-10-14",
         "which requests are still waiting" or "my bookings". Read only.
         :param date: Date as YYYY-MM-DD, or empty for upcoming.
-        :param status: One of Tentative, Confirmed, Declined, Cancelled, or empty for all.
+        :param status: One of Waiting, Confirmed, Declined, Cancelled, Expired, or empty for all.
         """
+        # The portal's internal word for a waiting request is "Tentative"; people see "Waiting" everywhere, so Digi uses the same word.
+        wanted = status.strip().lower()
+        status = "Tentative" if wanted in ("waiting", "pending", "tentative") else status
         try:
             code, body = self._call("bookings.list", {"date": date, "status": status}, __metadata__)
         except Exception as e:  # noqa: BLE001
@@ -48,7 +55,7 @@ class Tools:
         items = body.get("items", [])
         if not items:
             return "No bookings matched."
-        return "\n".join(f"- {i['ref']}: {i['date']} {i['start']} to {i['end']}: {i['room']} ({i['building']}), {i['purpose']}, {i['status']}" for i in items[:40])
+        return "\n".join(f"- {i['ref']}: {i['date']} {i['start']} to {i['end']}: {i['room']} ({i['building']}), {i['purpose']}, {SHOWN.get(i['status'], i['status'])}" for i in items[:40])
 
     def request_room(
         self, room: str, purpose: str, date: str, start_time: str, end_time: str, people: int, needs: str = "", __metadata__: Optional[dict] = None
