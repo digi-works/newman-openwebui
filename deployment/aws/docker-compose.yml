@@ -37,6 +37,8 @@ services:
       OWUI_RUNTIME_EMAIL: "${OWUI_RUNTIME_EMAIL:-}"
       OWUI_RUNTIME_PASSWORD: "${OWUI_RUNTIME_PASSWORD:-}"
       OWUI_RUNTIME_POOL: "${OWUI_RUNTIME_POOL:-}"
+      # Strands is not part of this package: point its health check at a closed local port so it fails at once instead of after 5 s
+      STRANDS_RUNTIME_URL: "${STRANDS_RUNTIME_URL:-http://127.0.0.1:9}"
       CHAT_PER_MINUTE: "${CHAT_PER_MINUTE:-20}"
       AI_DAILY_TURNS_PER_USER: "${AI_DAILY_TURNS_PER_USER:-300}"
       ADMISSION_GLOBAL: "${ADMISSION_GLOBAL:-12}"
