@@ -1,0 +1,44 @@
+--- /private/tmp/claude-502/-Users-aakashjaiswal-newman-openwebui/87147165-6c53-4927-8f43-b408075eb937/scratchpad/fs/app/src/app/(app)/approvals/page.tsx	2026-10-08 22:25:55
++++ src/approvals-page.tsx	2026-10-16 16:53:33
+@@ -1,8 +1,9 @@
+ import { redirect } from "next/navigation";
+ import { ApprovalsView } from "@/components/approvals-view";
++import { pendingCount } from "@/lib/booking-service";
+ import { listPending } from "@/lib/approvals";
+ import { P } from "@/lib/permissions";
+-import { authLive, requirePermission } from "@/lib/session";
++import { authLive, can, requirePermission } from "@/lib/session";
+ 
+ export const dynamic = "force-dynamic";
+ 
+@@ -10,8 +11,19 @@
+   const user = await requirePermission(P.approvalsDecide);
+   if (!user) redirect("/");
+   const items = authLive() ? await listPending(user) : [];
++  // Room requests are decided on Bookings, not here. Say so, with the bell's count, so this page never reads as "nothing to decide" (QA DEF-02).
++  const rooms = authLive() && can(user, P.bookingsApprove) ? await pendingCount(user.tenantId).catch(() => 0) : 0;
+   return (
+     <div className="p-4 md:p-8">
++      {rooms > 0 && (
++        <div role="status" className="mx-auto mb-6 flex max-w-3xl flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card px-5 py-4">
++          <div className="text-sm">
++            <div className="font-medium">{rooms} room {rooms === 1 ? "request is" : "requests are"} waiting for a decision</div>
++            <div className="text-muted-foreground">Room requests are approved or declined on the Bookings page, not here.</div>
++          </div>
++          <a href="/bookings" className="shrink-0 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/80">Review room requests</a>
++        </div>
++      )}
+       <ApprovalsView initial={items} />
+     </div>
+   );
+--- /private/tmp/claude-502/-Users-aakashjaiswal-newman-openwebui/87147165-6c53-4927-8f43-b408075eb937/scratchpad/fs/app/src/components/approvals-view.tsx	2026-10-08 22:25:55
++++ src/approvals-view.tsx	2026-10-16 16:53:33
+@@ -30,7 +30,7 @@
+       </div>
+       {error && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+       {items.length === 0 ? (
+-        <p className="rounded-2xl border bg-card px-5 py-10 text-center text-sm text-muted-foreground">Nothing is waiting for a decision.</p>
++        <p className="rounded-2xl border bg-card px-5 py-10 text-center text-sm text-muted-foreground">No actions are waiting for a second person's approval.</p>
+       ) : (
+         <ul className="divide-y rounded-2xl border bg-card">
+           {items.map((a) => (
