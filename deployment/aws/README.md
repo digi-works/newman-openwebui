@@ -67,8 +67,7 @@ If something fails:
 | "model ... is not in that Open WebUI" | Set `OWUI_BASE_MODEL` to an id it prints |
 | Chat answers but never calls tools | Open WebUI cannot reach `https://DIGI_DOMAIN/api/internal/...`: check DNS/firewall and that `OWUI_ALLOWED_IP` is the IP Open WebUI calls *from* (`docker compose logs caddy` shows 403s) |
 | "AI connection" unhealthy | Server cannot reach `OWUI_URL`, or an account was deleted: re-run `connect-owui.py` |
-| Digi needs a newer version of a tool module from this repo (e.g. after `git pull`) | `python3 connect-owui.py --update digi_rooms` replaces just that module's code and keeps its name, access and settings in Open WebUI. Add Digi's matching prompt lines from `scripts/create-digi.py` in Open WebUI by hand |
-| Nobody can sign in to reset a password (e.g. the only Admin is locked out) | Reset it from the server, keeping the single quotes: `docker compose run --rm -v "$PWD/scripts:/import:ro" -e EMAIL=admin@example.edu -e PASSWORD='new password' portal node /import/reset-password.mjs`. Leave out `PASSWORD` to get a random temporary one instead (see the script's header). It also clears a sign-in lockout and signs the account out everywhere |
+| Nobody can sign in (e.g. the only Admin is locked out) | Reset the password from the server: see **Reset a password from the server** under section 6 |
 
 ## Optional: copy rooms, events, classes and bookings from Supabase
 Copies buildings, rooms, events, the class schedule (courses become events so rooms show as busy during classes) and room bookings from the Supabase pilot database (schema `newmann`) into Digi. Supabase is only read. Safe to re-run: rows already copied are skipped. Run it in this folder after step 4, using the Supabase **Session pooler** connection string (Supabase > Connect > Session pooler; the direct connection is IPv6 only and most AWS servers cannot reach it):
@@ -81,12 +80,43 @@ docker compose run --rm -v "$PWD/scripts:/import:ro" -e SUPABASE_DB_URL='postgre
 Skipped rows are listed with the reason: a room whose building is missing, an occurrence without times, an archived event, or a booking that overlaps one already holding that room (approved bookings are copied first, so they win). Booking times are read as the university's local time.
 
 ## 6. Running it
-- Logs: `docker compose logs -f portal`. Update: load the new image, `docker compose up -d portal` (migrations run at start).
+- Logs: `docker compose logs -f portal`. Updates: see **Updating an existing deployment** below.
 - Backup (daily, from cron): `docker compose exec -T postgres pg_dump -U postgres -Fc digi > digi-$(date +%F).dump`, then copy it off the server (S3). Also keep `.env`. Restore: `pg_restore -U postgres -d digi --clean`.
 - Add users: Admin > Users in the portal. Rooms and roles are managed there too.
 
-## Updating later
-Copy the new zip, `docker load` its image, then `docker compose up -d portal` from the `aws` folder. Migrations run automatically at start; `.env` and the data volumes are untouched.
+### Reset a password from the server
+For when nobody can reset it in the portal, e.g. the only Admin is locked out (Staff cannot reset an Admin, and there is no forgot-password page). In this folder, keeping the **single quotes** around the password (otherwise the shell changes characters such as `$`):
+```bash
+docker compose run --rm -v "$PWD/scripts:/import:ro" -e EMAIL=admin@example.edu -e PASSWORD='the new password' portal node /import/reset-password.mjs
+```
+It prints `... now signs in with the password you set.` It also clears a "locked for 15 minutes" block, signs the account out everywhere and records the reset in the audit log. Leave out `PASSWORD` to set a random temporary one instead, which the person must change at first sign-in: it is written to the portal's data volume, read it with `docker compose run --rm portal sh -c 'cat /data/reset-password.txt && rm /data/reset-password.txt'`.
+
+## Updating an existing deployment
+Run from the `deployment/aws` folder. `.env` and the data volumes are never touched; database migrations run by themselves when the portal starts.
+
+1. Get the new version:
+   ```bash
+   git pull
+   ```
+2. Load the new portal image and restart with it (this also applies any change to `docker-compose.yml`):
+   ```bash
+   docker load -i ../image/digiworks-portal.tar.gz
+   docker compose up -d
+   ```
+3. If the update changed Digi's tool modules (listed under **This update** below), update just those in Open WebUI. Their name, access and settings there are kept:
+   ```bash
+   python3 connect-owui.py --update digi_rooms
+   ```
+   Do not use `--reset` for an update: it overwrites Digi and all its tools with this repo's versions, undoing anything changed in Open WebUI.
+4. If the update changed Digi's instructions (listed under **This update**), add the new lines by hand in Open WebUI > Workspace > Models > Digi > System prompt. `connect-owui.py` never changes the prompt of an existing Digi.
+5. Check: sign in, open **Settings > AI connection** (Open WebUI should show as connected), and ask Digi a question in **New chat**.
+
+### This update
+- Portal image: QA fixes (room request form no longer books an older search's date, Approvals page points to room requests waiting on Bookings, Settings > AI connection loads at once), and tables in chat replies.
+- `docker-compose.yml`: Strands' health check now fails at once (Strands is not part of this package).
+- Tool modules: `digi_rooms` (new `check_room_availability`, so Digi checks a named room before saying it is free). Run step 3 with `--update digi_rooms`.
+- Digi's instructions: add this line under "Room requests" (step 4):
+  > - When someone asks whether a specific room is free, call check_room_availability with the room, date, start and end time (ask for the end time if they did not give one). Never say a specific room is free or taken without it, and repeat its answer as it is.
 
 ## Before real students use it
 Enable snapshots of the EBS volume, put the daily dump in S3, and ask for Studio/MFA when you want operator access; none of that is in this package.

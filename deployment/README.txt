@@ -11,3 +11,5 @@ Short version:
   3. cp .env.example .env and fill it in.
   4. docker compose up -d, then run db/bootstrap-tenant.mjs for the first Admin.
   5. python3 connect-owui.py to connect the new Open WebUI.
+
+Updating an existing deployment: aws/README.md, section "Updating an existing deployment" (git pull, docker load, docker compose up -d, then any tool or prompt changes it lists).
