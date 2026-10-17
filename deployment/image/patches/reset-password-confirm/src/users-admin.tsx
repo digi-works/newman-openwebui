@@ -1,0 +1,123 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Copy, KeyRound, Loader2, UserPlus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import type { AdminUserRow, RoleOption } from "@/lib/admin-users";
+
+type Can = { create: boolean; update: boolean; disable: boolean; giveAdmin: boolean };
+const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Never");
+
+export function UsersAdmin({ users, roles, selfId, can }: { users: AdminUserRow[]; roles: RoleOption[]; selfId: string; can: Can }) {
+  // Only an Admin can hand out the Admin role
+  const givable = roles.filter((r) => !r.grantsAll || can.giveAdmin);
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [secret, setSecret] = useState<{ who: string; password: string } | null>(null);
+  const [adding, setAdding] = useState(false);
+  // Reset password asks first (QA DEF-27): the id of the row waiting for "Yes, reset".
+  const [confirmReset, setConfirmReset] = useState<string | null>(null);
+
+  async function call(url: string, method: string, body: unknown, key: string) {
+    setBusy(key); setError("");
+    const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => null);
+    const out = res ? await res.json().catch(() => ({})) : {};
+    setBusy(null);
+    if (!res || !res.ok) { setError(out.error ?? "Could not complete that."); return null; }
+    router.refresh();
+    return out as { temporaryPassword?: string };
+  }
+
+  async function create(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const out = await call("/api/admin/users", "POST", { name: f.get("name"), email: f.get("email"), role: f.get("role") }, "create");
+    if (out?.temporaryPassword) { setSecret({ who: String(f.get("email")), password: out.temporaryPassword }); setAdding(false); }
+  }
+
+  async function act(u: AdminUserRow, action: string, role?: string) {
+    const out = await call(`/api/admin/users/${u.id}`, "PATCH", { action, role }, u.id + action);
+    if (out?.temporaryPassword) setSecret({ who: u.email, password: out.temporaryPassword });
+  }
+
+  return (
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
+          <p className="text-sm text-muted-foreground">People who can sign in to Digi. There is no self sign-up; you create each account and hand over a temporary password.</p>
+        </div>
+        {can.create && <Button onClick={() => setAdding((v) => !v)}><UserPlus /> Add user</Button>}
+      </div>
+
+      {secret && (
+        <div role="status" className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+          <KeyRound className="size-4 shrink-0" />
+          <span>Temporary password for <b>{secret.who}</b>: <code className="rounded bg-background px-1.5 py-0.5 font-mono">{secret.password}</code>. It is shown once. They must change it at first sign-in.</span>
+          <Button size="sm" variant="outline" onClick={() => navigator.clipboard?.writeText(secret.password)}><Copy /> Copy</Button>
+          <Button size="sm" variant="ghost" onClick={() => setSecret(null)}>Done</Button>
+        </div>
+      )}
+      {error && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+
+      {adding && (
+        <form onSubmit={create} className="grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-[1fr_1fr_10rem_auto] sm:items-end">
+          <div className="space-y-1.5"><label htmlFor="name" className="text-sm font-medium">Name</label><Input id="name" name="name" required maxLength={120} /></div>
+          <div className="space-y-1.5"><label htmlFor="email" className="text-sm font-medium">Email</label><Input id="email" name="email" type="email" required /></div>
+          <div className="space-y-1.5">
+            <label htmlFor="role" className="text-sm font-medium">Role</label>
+            <select id="role" name="role" defaultValue={givable.find((r) => r.name === "Student")?.name ?? givable[0]?.name} className="h-9 w-full rounded-md border bg-background px-2 text-sm">{givable.map((r) => <option key={r.id}>{r.name}</option>)}</select>
+          </div>
+          <Button type="submit" disabled={busy === "create"}>{busy === "create" && <Loader2 className="animate-spin" />} Create</Button>
+        </form>
+      )}
+
+      <div className="overflow-x-auto rounded-xl border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <tr><th className="px-4 py-2.5">Name</th><th className="px-4 py-2.5">Role</th><th className="px-4 py-2.5">Status</th><th className="px-4 py-2.5">Last sign-in</th><th className="px-4 py-2.5 text-right">Actions</th></tr>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u.id} className="border-t">
+                <td className="px-4 py-3"><div className="font-medium">{u.name}{u.id === selfId && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}</div><div className="text-xs text-muted-foreground">{u.email}</div></td>
+                <td className="px-4 py-3">
+                  <select aria-label={`Role for ${u.name}`} value={u.role} disabled={!can.update || u.id === selfId || busy !== null || (u.role.includes("Admin") && !can.giveAdmin)} onChange={(e) => act(u, "set_role", e.target.value)} className="h-8 rounded-md border bg-background px-2 text-sm">
+                    {!roles.some((r) => r.name === u.role) && <option>{u.role || "No role"}</option>}
+                    {roles.filter((r) => !r.grantsAll || can.giveAdmin || r.name === u.role).map((r) => <option key={r.id}>{r.name}</option>)}
+                  </select>
+                </td>
+                <td className="px-4 py-3">
+                  <Badge variant={u.status === "active" ? "secondary" : "outline"}>{u.status === "active" ? "Active" : "Disabled"}</Badge>
+                  {u.mustChangePassword && <span className="ml-2 text-xs text-muted-foreground">temporary password</span>}
+                </td>
+                <td className="px-4 py-3 text-muted-foreground">{when(u.lastLogin)}</td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-end gap-2">
+                    {can.update && u.id !== selfId && (confirmReset === u.id ? (
+                      <span className="flex flex-wrap items-center justify-end gap-2">
+                        <span className="text-xs text-muted-foreground">Reset the password for {u.name}? They will be signed out.</span>
+                        <Button size="sm" variant="destructive" disabled={busy !== null} onClick={() => { setConfirmReset(null); act(u, "reset_password"); }}>Yes, reset</Button>
+                        <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => setConfirmReset(null)}>Cancel</Button>
+                      </span>
+                    ) : (
+                      <Button size="sm" variant="outline" disabled={busy !== null || (u.role.includes("Admin") && !can.giveAdmin)} onClick={() => setConfirmReset(u.id)}>Reset password</Button>
+                    ))}
+                    {can.disable && u.id !== selfId && (
+                      <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => act(u, u.status === "active" ? "disable" : "enable")}>{u.status === "active" ? "Disable" : "Enable"}</Button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {users.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No users yet.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
