@@ -1,0 +1,11 @@
+--- /private/tmp/claude-502/-Users-aakashjaiswal-newman-openwebui/87147165-6c53-4927-8f43-b408075eb937/scratchpad/fs/app/src/components/app-sidebar.tsx	2026-10-08 22:25:55
++++ /Users/aakashjaiswal/newman-openwebui/deployment/image/patches/help-asks-digi/app-sidebar.tsx	2026-10-17 15:52:29
+@@ -152,7 +152,7 @@
+       <SidebarFooter>
+         <SidebarMenu>
+           <SidebarMenuItem>
+-            <SidebarMenuButton tooltip="Help">
++            <SidebarMenuButton tooltip="Help" onClick={async () => router.push(`/chat/${await createChat("digi", "What can you help me with in Ask Digi?")}`)}>
+               <CircleHelp /> <span>Help</span>
+             </SidebarMenuButton>
+           </SidebarMenuItem>
