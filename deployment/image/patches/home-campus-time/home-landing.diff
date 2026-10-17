@@ -1,0 +1,15 @@
+--- /private/tmp/claude-502/-Users-aakashjaiswal-newman-openwebui/87147165-6c53-4927-8f43-b408075eb937/scratchpad/fs/app/src/components/home-landing.tsx	2026-10-08 22:25:55
++++ /Users/aakashjaiswal/newman-openwebui/deployment/image/patches/home-campus-time/home-landing.tsx	2026-10-17 15:38:06
+@@ -24,9 +24,10 @@
+   const router = useRouter();
+   const [text, setText] = useState("");
+   const now = new Date();
+-  const hour = now.getHours();
++  // Campus time on the server and in the browser, so both render the same day and greeting (QA DEF-19).
++  const hour = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: "America/Chicago" }).format(now));
+   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+-  const today = now.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long" });
++  const today = now.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", timeZone: "America/Chicago" });
+ 
+   async function ask(prompt: string) {
+     const p = prompt.trim();
