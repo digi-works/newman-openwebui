@@ -1,0 +1,44 @@
+--- /private/tmp/claude-502/-Users-aakashjaiswal-newman-openwebui/87147165-6c53-4927-8f43-b408075eb937/scratchpad/src2/src/components/booking-dialog.tsx	2026-10-08 22:25:55
++++ /Users/aakashjaiswal/newman-openwebui/deployment/image/patches/booking-cancel-confirm/booking-dialog.tsx	2026-10-18 22:56:57
+@@ -75,6 +75,8 @@
+   const [attendees, setAttendees] = useState(String(b.attendees));
+   const [busy, setBusy] = useState<Busy>(null);
+   const [error, setError] = useState("");
++  // Cancelling asks first (Jira WOR-142): the first press shows "This cannot be undone", the second cancels.
++  const [confirmCancel, setConfirmCancel] = useState(false);
+ 
+   const pct = Math.min(100, Math.round((b.attendees / b.capacity) * 100));
+   const over = b.attendees > b.capacity;
+@@ -99,6 +101,8 @@
+   };
+   const cancel = () => {
+     if (!own && !reason.trim()) { setError("Add a short reason for cancelling someone else’s booking."); return; }
++    if (!confirmCancel) { setConfirmCancel(true); return; }
++    setConfirmCancel(false);
+     void call("cancel", `/api/bookings/${b.id}/cancel`, "POST", { reason }, `${b.room} cancelled.`);
+   };
+   const save = () => {
+@@ -190,7 +194,9 @@
+             {(can.edit || can.cancel) && (
+               <div className="mt-4 flex flex-wrap gap-2">
+                 {can.edit && <Button disabled={!!busy} onClick={save}>{busy === "save" && <Loader2 className="animate-spin" />} Save changes</Button>}
+-                {can.cancel && <Button variant="outline" disabled={!!busy} onClick={cancel}>{busy === "cancel" && <Loader2 className="animate-spin" />} Cancel request</Button>}
++                {can.cancel && <Button variant={confirmCancel ? "destructive" : "outline"} disabled={!!busy} onClick={cancel}>{busy === "cancel" && <Loader2 className="animate-spin" />} {confirmCancel ? "Yes, cancel request" : "Cancel request"}</Button>}
++                {can.cancel && confirmCancel && <Button variant="outline" disabled={!!busy} onClick={() => setConfirmCancel(false)}>Keep it</Button>}
++                {can.cancel && confirmCancel && <p className="w-full text-sm text-muted-foreground">Cancel this request? This cannot be undone.</p>}
+               </div>
+             )}
+             <p className="mt-3 text-xs text-muted-foreground">To change the room or the time, cancel this request and make a new one.</p>
+@@ -212,7 +218,11 @@
+               </>
+             )}
+             {error && <p role="alert" className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+-            <Button variant="outline" className="mt-4" disabled={!!busy} onClick={cancel}>{busy === "cancel" && <Loader2 className="animate-spin" />} Cancel booking</Button>
++            {confirmCancel && <p className="mt-3 text-sm text-muted-foreground">Cancel this booking? This cannot be undone.</p>}
++            <div className="mt-4 flex flex-wrap gap-2">
++              <Button variant={confirmCancel ? "destructive" : "outline"} disabled={!!busy} onClick={cancel}>{busy === "cancel" && <Loader2 className="animate-spin" />} {confirmCancel ? "Yes, cancel booking" : "Cancel booking"}</Button>
++              {confirmCancel && <Button variant="outline" disabled={!!busy} onClick={() => setConfirmCancel(false)}>Keep it</Button>}
++            </div>
+           </section>
+         )}
+ 
