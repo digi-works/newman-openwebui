@@ -33,5 +33,25 @@ Disallow: /
 		respond "Forbidden" 403
 	}
 
+	# API paths always answer in JSON, like the portal's own errors ({"error": ...}). The portal sends its HTML 404 page for an API
+	# path it has no route for, and an empty 405 for a method a route does not take; "code" tells these apart from "no such record".
+	handle /api/* {
+		reverse_proxy portal:3000 {
+			@no_route {
+				status 404
+				header Content-Type text/html*
+			}
+			handle_response @no_route {
+				header Content-Type "application/json"
+				respond `{"error":"No such API endpoint.","code":"no_such_endpoint"}` 404
+			}
+			@no_method status 405
+			handle_response @no_method {
+				header Content-Type "application/json"
+				respond `{"error":"This API endpoint does not accept {method}.","code":"method_not_allowed"}` 405
+			}
+		}
+	}
+
 	reverse_proxy portal:3000
 }
