@@ -1,0 +1,70 @@
+--- booking-stale-results/room-request-form.tsx
++++ room-request-form.tsx
+@@ -21,6 +21,23 @@
+   // and a request can never use an older search's date, time or size (QA DEF-11, DEF-12).
+   const [stale, setStale] = useState(false);
+   const clearResults = () => { if (result) { setResult(null); setStale(true); } };
++  // What is wrong with the form, by field. Shown in the form and on the fields themselves rather than the browser's
++  // passing bubble, and kept up to date as the person fixes it (QA DEF-13).
++  const [problems, setProblems] = useState<Record<string, string>>({});
++  function check(f: FormData) {
++    const v = (k: string) => String(f.get(k) ?? "").trim();
++    const p: Record<string, string> = {};
++    if (!v("purpose")) p.purpose = "Say what the booking is for.";
++    if (!v("date")) p.date = "Pick a date.";
++    else if (v("date") < today) p.date = "Pick today or a later date.";
++    if (!v("start")) p.start = "Set a start time.";
++    if (!v("end")) p.end = "Set an end time.";
++    else if (v("start") && v("end") <= v("start")) p.end = "The end time must be after the start time.";
++    const n = Number(v("people"));
++    if (!v("people") || !Number.isInteger(n) || n < 1 || n > 500) p.people = "Say how many people, from 1 to 500.";
++    return p;
++  }
++  const bad = (k: string) => (problems[k] ? true : undefined);
+ 
+   async function search(e: React.FormEvent<HTMLFormElement>) {
+     e.preventDefault();
+@@ -29,7 +46,10 @@
+       purpose: String(f.get("purpose") ?? "").trim(), date: String(f.get("date")), start: String(f.get("start")), end: String(f.get("end")),
+       people: Number(f.get("people")), building: String(f.get("building") ?? ""), needs: chosen,
+     };
+-    if (!q.purpose) { setError("Say what the booking is for."); return; }
++    const p = check(f);
++    setProblems(p);
++    // a search that cannot run also removes the old results, so they cannot be requested (QA DEF-12)
++    if (Object.keys(p).length) { clearResults(); return; }
+     setBusy("search"); setError(""); setResult(null); setStale(false);
+     const res = await fetch("/api/rooms/search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(q) }).catch(() => null);
+     const out = res ? await res.json().catch(() => ({})) : {};
+@@ -73,13 +93,13 @@
+         <p className="text-sm text-muted-foreground">Tell us when and how many, see what is free, and ask for a room. Requests hold the room for a few days while an approver decides.</p>
+       </div>
+ 
+-      <form onSubmit={search} onChange={clearResults} onInvalidCapture={clearResults} className="space-y-4 rounded-2xl border bg-card p-5">
+-        <div className="space-y-1.5"><label htmlFor="purpose" className="text-sm font-medium">What is the booking for?</label><Input id="purpose" name="purpose" required maxLength={200} placeholder="Study group, club meeting…" /></div>
++      <form noValidate onSubmit={search} onChange={(e) => { clearResults(); if (Object.keys(problems).length) setProblems(check(new FormData(e.currentTarget))); }} className="space-y-4 rounded-2xl border bg-card p-5">
++        <div className="space-y-1.5"><label htmlFor="purpose" className="text-sm font-medium">What is the booking for?</label><Input id="purpose" name="purpose" required maxLength={200} placeholder="Study group, club meeting…" aria-invalid={bad("purpose")} /></div>
+         <div className="grid gap-4 sm:grid-cols-4">
+-          <div className="space-y-1.5"><label htmlFor="date" className="text-sm font-medium">Date</label><Input id="date" name="date" type="date" required min={today} defaultValue={today} /></div>
+-          <div className="space-y-1.5"><label htmlFor="start" className="text-sm font-medium">Start</label><Input id="start" name="start" type="time" required defaultValue="14:00" /></div>
+-          <div className="space-y-1.5"><label htmlFor="end" className="text-sm font-medium">End</label><Input id="end" name="end" type="time" required defaultValue="15:00" /></div>
+-          <div className="space-y-1.5"><label htmlFor="people" className="text-sm font-medium">People</label><Input id="people" name="people" type="number" required min={1} max={500} defaultValue={6} /></div>
++          <div className="space-y-1.5"><label htmlFor="date" className="text-sm font-medium">Date</label><Input id="date" name="date" type="date" required min={today} defaultValue={today} aria-invalid={bad("date")} /></div>
++          <div className="space-y-1.5"><label htmlFor="start" className="text-sm font-medium">Start</label><Input id="start" name="start" type="time" required defaultValue="14:00" aria-invalid={bad("start")} /></div>
++          <div className="space-y-1.5"><label htmlFor="end" className="text-sm font-medium">End</label><Input id="end" name="end" type="time" required defaultValue="15:00" aria-invalid={bad("end")} /></div>
++          <div className="space-y-1.5"><label htmlFor="people" className="text-sm font-medium">People</label><Input id="people" name="people" type="number" required min={1} max={500} defaultValue={6} aria-invalid={bad("people")} /></div>
+         </div>
+         <div className="space-y-1.5">
+           <label htmlFor="building" className="text-sm font-medium">Preferred building</label>
+@@ -95,6 +115,11 @@
+           </div>
+         </div>
+         {stale && <p role="status" className="rounded-lg border bg-muted px-3 py-2 text-sm text-muted-foreground">You changed the search. Press Find available rooms again to see what is free.</p>}
++        {Object.keys(problems).length > 0 && (
++          <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
++            {Object.values(problems).map((m) => <p key={m}>{m}</p>)}
++          </div>
++        )}
+         {error && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+         <Button type="submit" disabled={busy !== null}>{busy === "search" && <Loader2 className="animate-spin" />} Find available rooms</Button>
+       </form>
