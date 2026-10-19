@@ -1,0 +1,14 @@
+--- src/lib/rooms.ts (in the image)
++++ rooms.ts
+@@ -67,7 +67,10 @@
+     { o: { size: true, building: true, needs: true }, note: "" },
+     { o: { size: false, building: true, needs: true }, note: "These rooms are larger than you need, but they are free." },
+     { o: { size: false, building: false, needs: true }, note: q.building ? `Nothing free in ${q.building}, so these are in other buildings.` : "" },
+-    { o: { size: false, building: false, needs: false }, note: `Nothing free matches everything you asked for${needs.length ? ` (${needs.join(", ")})` : ""}. These are free and fit your group, so check the equipment with staff.` },
++    // by now both the building and the equipment were loosened, so name both (QA DEF-14)
++    { o: { size: false, building: false, needs: false }, note: q.building
++      ? `Nothing free in ${q.building} or any other building matches everything you asked for${needs.length ? ` (${needs.join(", ")})` : ""}. These are free and fit your group, but may be in other buildings, so check the equipment with staff.`
++      : `Nothing free matches everything you asked for${needs.length ? ` (${needs.join(", ")})` : ""}. These are free and fit your group, so check the equipment with staff.` },
+   ];
+   for (const st of steps) {
+     const found = filterRooms(rooms, q, isBusy, st.o);
