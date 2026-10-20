@@ -1,0 +1,11 @@
+{
+  "key_id": "root-1",
+  "alg": "ES256",
+  "public_key": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "n9Fo4fIFK86sfjknzr6VxABgPsQXleTkIrOnRV-CVAU",
+    "y": "wAp7fFDj9MVCcNIHZ1Z1_TqDTUMleXsRYNqu3yVwu9g"
+  },
+  "created_at": "2026-10-07T17:59:33.571Z"
+}

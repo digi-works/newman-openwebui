@@ -2,7 +2,7 @@ ASK DIGI, AWS DEPLOYMENT PACKAGE
 
 Full instructions: aws/README.md (open it first). Run everything from this deployment/ folder of the cloned repository.
 
-  image/   the portal Docker image (docker load -i image/digiworks-portal.tar.gz)
+  image/   the portal Docker image (docker load -i image/digiworks-portal.tar.gz), and image/portal, its source (aws/README.md: "Building the portal image")
   aws/     compose file, Caddy config, .env.example, connect-owui.py, README.md
 
 Short version:
@@ -11,5 +11,7 @@ Short version:
   3. cp .env.example .env and fill it in.
   4. docker compose up -d, then run db/bootstrap-tenant.mjs for the first Admin.
   5. python3 connect-owui.py to connect the new Open WebUI.
+
+Optional: room booking emails and calendar invites through Microsoft 365: aws/README.md, section "Room booking emails and calendar invites".
 
 Updating an existing deployment: aws/README.md, section "Updating an existing deployment" (git pull, docker load, docker compose up -d, then any tool or prompt changes it lists).

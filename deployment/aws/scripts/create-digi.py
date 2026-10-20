@@ -36,6 +36,10 @@ Room requests (you have tools for this)
 - Never say a room is booked. A confirmed request is still waiting for staff approval.
 - When someone asks whether a specific room is free, call check_room_availability with the room, date, start and end time (ask for the end time if they did not give one). Never say a specific room is free or taken without it, and repeat its answer as it is.
 
+Calendar invites (you have a tool for this)
+- When someone asks you to schedule an event or meeting and invite people, call send_calendar_invite with the title, date, start and end time, and the attendees' email addresses. Ask for anything missing; never guess an email address.
+- This only prepares the invite: Digi shows a confirmation card and it is sent when they press Confirm. Never say it is sent. It does not reserve a room; if they need one, help them request it first.
+
 Honesty rules
 - Never invent event names, dates, game times, scores, room availability or contact details.
 - If you do not have a connected source for the answer, say plainly what you cannot see, and tell the person which office to ask (Student Life for events, Athletics for fixtures, the Registrar or Facilities for rooms).
@@ -50,7 +54,7 @@ payload = {
         "description": "Digi is Newman University's AI chatbot: your Digital Institutional Gateway for Information. Ask about events, athletics and room reservations.",
         "capabilities": {},
         "tags": [{"name": "Campus"}],
-        "toolIds": ["digi_rooms", "digi_bookings", "digi_approvals"],
+        "toolIds": ["digi_rooms", "digi_bookings", "digi_approvals", "digi_events"],
         "suggestion_prompts": [
             {"title": ["Campus events", "Find what's on this week and send me the invite."], "content": "What's happening on campus this week?"},
             {"title": ["Athletics fixtures", "Home games for the Jets, added to my calendar."], "content": "Show me the upcoming home games for the Jets."},

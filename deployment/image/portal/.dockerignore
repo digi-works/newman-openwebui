@@ -1,0 +1,8 @@
+node_modules
+.next
+.git
+next-env.d.ts
+tsconfig.tsbuildinfo
+server.js
+Dockerfile
+.dockerignore

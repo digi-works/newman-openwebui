@@ -1,6 +1,6 @@
 # Ask Digi: customer frontend, AWS deployment
 
-What you are deploying: the Digi portal (sign-in, roles, chat, room booking, approvals, memory), its own Postgres, and Caddy for HTTPS. **Not included:** Studio, Strands, and Open WebUI itself. Digi connects to an Open WebUI that already exists.
+What you are deploying: the Digi portal (sign-in, roles, chat, room booking, approvals, memory, booking emails and calendar invites), its own Postgres, and Caddy for HTTPS. **Not included:** Studio, Strands, and Open WebUI itself. Digi connects to an Open WebUI that already exists.
 
 ```
 people ──https──> Caddy ──> Digi portal ──> Postgres (this server)
@@ -8,6 +8,8 @@ people ──https──> Caddy ──> Digi portal ──> Postgres (this serve
           signs in as 3 shared│   │ tool calls (key + IP allow-list)
           runtime accounts    ▼   │
                          Open WebUI (separate instance) ──> model provider
+
+ Digi portal ──https──> Microsoft Graph (optional: booking emails and calendar invites, sent from one mailbox)
 ```
 
 ## 0. What you need
@@ -16,6 +18,7 @@ people ──https──> Caddy ──> Digi portal ──> Postgres (this serve
 - A DNS name (`DIGI_DOMAIN`) with an **A record to the Elastic IP**. Caddy needs it to get the certificate.
 - The Open WebUI instance: its https URL, an **admin API key**, its **public IP**, and at least one model already working in it.
 - Open WebUI must be able to reach `https://DIGI_DOMAIN` (it calls Digi's tools there), and this server must be able to reach `OWUI_URL`.
+- Optional, for emails: a Microsoft 365 mailbox to send from and an Entra app registration that may send as it (see **Room booking emails and calendar invites**). The server must reach `login.microsoftonline.com` and `graph.microsoft.com` (outbound https, allowed by default).
 
 ## 1. Prepare the server (once)
 ```bash
@@ -33,7 +36,7 @@ cd aws && cp .env.example .env && chmod 600 .env
 (Using ECR instead: push the image, set `PORTAL_IMAGE` in `.env` to its URI and `aws ecr get-login-password | docker login ...`; skip `docker load`.)
 
 ## 3. Fill in `.env`
-Open `.env` and set every value (comments explain each), including the Open WebUI ones: `OWUI_URL`, `OWUI_ADMIN_TOKEN` (an admin API key from Open WebUI > Settings > Account > API keys), `OWUI_ALLOWED_IP` and `OWUI_BASE_MODEL`. Step 4 will not start without them. Leave only the `OWUI_RUNTIME_*` lines empty; step 5 fills those in. Generate each secret with `openssl rand -base64 32` (one per line, all different). Keep a copy of **`DIGI_SECRET_KEY`** and the file somewhere safe that is not this server.
+Open `.env` and set every value (comments explain each), including the Open WebUI ones: `OWUI_URL`, `OWUI_ADMIN_TOKEN` (an admin API key from Open WebUI > Settings > Account > API keys), `OWUI_ALLOWED_IP` and `OWUI_BASE_MODEL`. Step 4 will not start without them. Leave only the `OWUI_RUNTIME_*` lines empty; step 5 fills those in. The **Email** values are optional; leave them empty for now if you do not have them (see **Room booking emails and calendar invites**). Generate each secret with `openssl rand -base64 32` (one per line, all different). Keep a copy of **`DIGI_SECRET_KEY`** and the file somewhere safe that is not this server.
 
 ## 4. Start Digi and create the first Admin
 ```bash
@@ -51,7 +54,7 @@ Wait about a minute, then open `https://DIGI_DOMAIN` and sign in with `ADMIN_EMA
    ```bash
    python3 connect-owui.py
    ```
-   It checks the token and the model, creates 3 shared runtime accounts (written into `.env` as `OWUI_RUNTIME_POOL`, with the first one also as `OWUI_RUNTIME_EMAIL`/`OWUI_RUNTIME_PASSWORD`), installs the five Digi tool modules in Open WebUI pointing at `https://DIGI_DOMAIN`, and creates the **Digi** model.
+   It checks the token and the model, creates 3 shared runtime accounts (written into `.env` as `OWUI_RUNTIME_POOL`, with the first one also as `OWUI_RUNTIME_EMAIL`/`OWUI_RUNTIME_PASSWORD`), installs the six Digi tool modules in Open WebUI pointing at `https://DIGI_DOMAIN`, and creates the **Digi** model.
    Safe to re-run: Digi, its tools and their settings are left as they are in Open WebUI, so changes made there are kept (only the tools' portal address and key are corrected). To overwrite them with the versions in this repo, run `python3 connect-owui.py --reset`. For a normal update you do not need this step at all.
 4. Apply it and reload Caddy's allow-list:
    ```bash
@@ -68,6 +71,44 @@ If something fails:
 | Chat answers but never calls tools | Open WebUI cannot reach `https://DIGI_DOMAIN/api/internal/...`: check DNS/firewall and that `OWUI_ALLOWED_IP` is the IP Open WebUI calls *from* (`docker compose logs caddy` shows 403s) |
 | "AI connection" unhealthy | Server cannot reach `OWUI_URL`, or an account was deleted: re-run `connect-owui.py` |
 | Nobody can sign in (e.g. the only Admin is locked out) | Reset the password from the server: see **Reset a password from the server** under section 6 |
+
+## Room booking emails and calendar invites (optional)
+Digi can email people about room bookings and send calendar invites, from one Microsoft 365 mailbox (`MAIL_FROM`). It is off until someone switches it on in **Settings > Notifications**; the notification bell in Digi works either way.
+
+**What happens when it is on**
+- **New room request:** the room manager inbox gets an email with **Approve** and **Reject** buttons, and the requester gets "request received".
+- **Approve / Reject:** each button opens a page in Digi where the manager adds a note and presses **Confirm decision**. Opening the link alone changes nothing (mail scanners open links too). The link works for 14 days and only while the request is still waiting. The decision is saved as the **Digi account with the manager's email address**, so that account must exist and be able to approve room requests (role **Staff** or **Admin**), and the usual rule applies: nobody decides their own request. Managers can still decide on the Bookings page as before.
+- **Approved, declined, cancelled by someone else, replaced by a priority request, or expired:** the requester gets an email.
+- **Calendar invites (separate switch):** when someone asks Digi to schedule an event and invite people, Digi shows a confirmation card; after **Confirm**, everyone listed (and the person who asked) gets a real calendar invite with Yes / Maybe / No. Replies go to the `MAIL_FROM` mailbox. This does not reserve a room.
+- Emails are sent in the background and retried for a few minutes if Microsoft is briefly unavailable; each email goes out once. The last few results (sent or the error) are listed in Settings > Notifications.
+
+**1. Microsoft (once, by your Microsoft 365 admin).** In the Microsoft Entra admin center:
+1. Confirm the mailbox that will send exists and has an Exchange Online licence (a shared mailbox also works).
+2. **App registrations > New registration**, single tenant, no redirect URI.
+3. **API permissions > Add a permission > Microsoft Graph > Application permissions > Mail.Send**, then **Grant admin consent**. Digi needs nothing else (no Mail.Read).
+4. **Certificates & secrets > New client secret**. Copy the **Value** at once, and note the expiry date: emails stop when it expires, so put a reminder in a calendar to make a new one before then.
+5. Recommended: limit the app to that one mailbox with an Exchange **application access policy** (`New-ApplicationAccessPolicy -AccessRight RestrictAccess`), otherwise Mail.Send lets it send as anyone in the organisation.
+
+**2. The server.** In `.env` set `MS_TENANT_ID`, `MS_CLIENT_ID` (both on the app's Overview page), `MS_CLIENT_SECRET` (the secret's Value), `MAIL_FROM` (the sending mailbox) and `BOOKING_MANAGER_EMAIL` (who receives new requests), then:
+```bash
+docker compose up -d
+```
+
+**3. Digi.** Sign in as an Admin or Staff member and open **Settings > Notifications**:
+1. **Send me a test email**: it goes to your own address. If it fails, the message says what Microsoft answered (see the table below).
+2. Check the **Room manager email**, then **Switch on** room booking email notifications, and calendar invites if you want them.
+3. Make sure each room manager address has a Digi account with the Staff (or Admin) role: Settings > Users.
+4. Try it: as a Student account, request a room. The manager should get the email within a few seconds; use **Reject** with a note and check the student gets "declined".
+
+| In Settings > Notifications | Cause / fix |
+|---|---|
+| "Email is not set up on this server yet" | One of the four `MS_*`/`MAIL_FROM` values is empty in `.env`, or `docker compose up -d` was not run after setting them |
+| `invalid_client` / "MS_CLIENT_SECRET is wrong or expired" | Make a new client secret in Entra, put its Value in `.env`, `docker compose up -d` |
+| `ErrorAccessDenied` | Mail.Send is missing, admin consent was not granted, or an application access policy does not include `MAIL_FROM` |
+| `ErrorInvalidUser` / `MailboxNotEnabledForRESTAPI` | `MAIL_FROM` is not a mailbox in that Microsoft tenant, or it has no Exchange Online licence |
+| "No room manager email is set" | Enter one in Settings > Notifications |
+| The manager's decision page says the address "needs an active Digi account that can approve" | Create that user in Settings > Users with the Staff role (same email address) |
+| Emails arrive in junk | Ask the mail admin to allow `MAIL_FROM` for internal recipients; Microsoft signs them, so this is usually only the first few |
 
 ## Optional: copy rooms, events, classes and bookings from Supabase
 Copies buildings, rooms, events, the class schedule (courses become events so rooms show as busy during classes) and room bookings from the Supabase pilot database (schema `newmann`) into Digi. Supabase is only read. Safe to re-run: rows already copied are skipped. Run it in this folder after step 4, using the Supabase **Session pooler** connection string (Supabase > Connect > Session pooler; the direct connection is IPv6 only and most AWS servers cannot reach it):
@@ -115,13 +156,32 @@ Run from the `deployment/aws` folder. `.env` and the data volumes are never touc
 4. If the update changed Digi's instructions (listed under **This update**), add the new lines by hand in Open WebUI > Workspace > Models > Digi > System prompt. `connect-owui.py` never changes the prompt of an existing Digi.
 5. Check: sign in, open **Settings > AI connection** (Open WebUI should show as connected), and ask Digi a question in **New chat**.
 
-### This update
+### This update: room booking emails and calendar invites
+- Portal image: **Settings > Notifications** (switch room booking emails and calendar invites on or off, room manager inbox, test email, recent email results); room manager emails with Approve / Reject; requester emails for every change; calendar invites from Digi. One database migration (`0014_booking_emails.sql`) runs by itself at start. Nothing is emailed until someone switches it on.
+- The portal is now built from source kept in this repo (`deployment/image/portal`, see **Building the portal image**); all the earlier QA fixes are part of it. The image runs exactly as before.
+- `docker-compose.yml` and `.env.example`: new optional **Email** values (`MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MAIL_FROM`, `BOOKING_MANAGER_EMAIL`). Copy that block from `.env.example` into your `.env` and fill it in when you have the Microsoft values; then follow **Room booking emails and calendar invites**.
+- Tool modules: new `digi_events` (calendar invites). Run step 3 with `--update digi_events`; it is created and added to Digi.
+- Digi's instructions: add this section above "Honesty rules" (step 4):
+  > Calendar invites (you have a tool for this)
+  > - When someone asks you to schedule an event or meeting and invite people, call send_calendar_invite with the title, date, start and end time, and the attendees' email addresses. Ask for anything missing; never guess an email address.
+  > - This only prepares the invite: Digi shows a confirmation card and it is sent when they press Confirm. Never say it is sent. It does not reserve a room; if they need one, help them request it first.
+
+### Earlier update (QA fixes): only if your server does not have it yet
 - Portal image: QA fixes (room request form no longer books an older search's date, Approvals page points to room requests waiting on Bookings, Settings > AI connection loads at once, booking references shown in the Bookings table, home page date and greeting in campus time, Help opens a chat with Digi, Reset password in Settings > Users asks first and is not offered on your own account, cancelling a booking asks first, the room request form says what is wrong with it instead of only the browser's bubble, a room search that had to give up the building and the equipment names both, Settings > AI updates explains the Release address instead of showing releases.example.com, waiting requests on Bookings show "Approve or decline" to people who can decide them, deleting a chat on History asks first, the sign-in page has Forgot password? and signed-out API calls get 401 "Please sign in.", the Add user error clears once the form is edited), and tables in chat replies.
 - `docker-compose.yml`: Strands' health check now fails at once (Strands is not part of this package).
 - `Caddyfile`: adds the Strict-Transport-Security and Content-Security-Policy headers, and answers /robots.txt with a short plain-text file (crawlers stay out) and /sitemap.xml with a plain 404 instead of the HTML error page, and answers unknown `/api/*` paths with a JSON 404 (`"code":"no_such_endpoint"`) and a wrong method with a JSON 405 (`"code":"method_not_allowed"`). Reload Caddy (step 2).
 - Tool modules: `digi_rooms` (new `check_room_availability`, so Digi checks a named room before saying it is free) and `digi_bookings` (Digi calls a waiting request "Waiting", as the Bookings page does, not "Tentative"). Run step 3 with `--update digi_rooms,digi_bookings`.
 - Digi's instructions: add this line under "Room requests" (step 4):
   > - When someone asks whether a specific room is free, call check_room_availability with the room, date, start and end time (ask for the end time if they did not give one). Never say a specific room is free or taken without it, and repeat its answer as it is.
+
+## Building the portal image
+`../image/digiworks-portal.tar.gz` is built from `../image/portal` (the portal's source, Next.js). You only need this to change the portal; deploying uses the tarball. On a machine with Docker (the image is **arm64**, like the EC2 instance it runs on; build on an arm64 machine such as an Apple Silicon Mac or a Graviton instance):
+```bash
+cd deployment/image/portal
+docker build -t digiworks-portal:release .
+docker save digiworks-portal:release | gzip > ../digiworks-portal.tar.gz
+```
+The folders under `../image/patches` are the earlier fixes that were applied to the built image before the source was in the repo; they are all part of `portal` now and are kept only as a record.
 
 ## Before real students use it
 Enable snapshots of the EBS volume, put the daily dump in S3, and ask for Studio/MFA when you want operator access; none of that is in this package.
