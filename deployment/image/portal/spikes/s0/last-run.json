@@ -1,0 +1,69 @@
+{
+ "results": {
+  "concurrent": {
+   "A": {
+    "text": "Alice Student — alice@newmanu.edu",
+    "error": null,
+    "toolOut": "[{\"type\":\"input_text\",\"text\":\"{\\\"gateway\\\": {\\\"status\\\": 200, \\\"tenant\\\": \\\"newman\\\", \\\"user_id\\\": \\\"u-alice\\\", \\\"name\\\": \\\"Alice Student\\\", \\\"email\\\": \\\"alice@newmanu.edu\\\", \\\"role\\\": \\\"Student\\\"}, \\\"owui_runtime_user\\\": \\\"digi-runtime@digiworks.local\\\", \\\"metadata_keys\\\": [\\\"assistant_message_id\\\", \\\"automation_id\\\", \\\"chat_id\\\", \\\"chat_variables\\\", \\\"direct\\\", \\\"features\\\", \\\"files\\\", \\\"filter_ids\\\", \\\"folder_id\\\", \\\"internal\\\", \\\"message_id\\\", \\\"model\\\", \\\"model_id\\\", \\\"params\\\", \\\"session_id\\\", \\\"skill_ids\\\", \\\"sources\\\", \\\"system_prompt\\\", \\\"task_id\\\", \\\"terminal_id\\\", \\\"tool_ids\\\", \\\"tool_servers\\\", \\\"tools\\\", \\\"user_agent\\\", \\\"user_id\\\", \\\"user_message\\\", \\\"user_message_id\\\", \\\"user_prompt\\\", \\\"variables\\\"], \\\"seen_chat_id_prefix\\\": \\\"local:exec-0de\\\"}\"}]",
+    "timedOut": false
+   },
+   "B": {
+    "text": "Bob Admin — bob@newmanu.edu",
+    "error": null,
+    "toolOut": "[{\"type\":\"input_text\",\"text\":\"{\\\"gateway\\\": {\\\"status\\\": 200, \\\"tenant\\\": \\\"newman\\\", \\\"user_id\\\": \\\"u-bob\\\", \\\"name\\\": \\\"Bob Admin\\\", \\\"email\\\": \\\"bob@newmanu.edu\\\", \\\"role\\\": \\\"Admin\\\"}, \\\"owui_runtime_user\\\": \\\"digi-runtime@digiworks.local\\\", \\\"metadata_keys\\\": [\\\"assistant_message_id\\\", \\\"automation_id\\\", \\\"chat_id\\\", \\\"chat_variables\\\", \\\"direct\\\", \\\"features\\\", \\\"files\\\", \\\"filter_ids\\\", \\\"folder_id\\\", \\\"internal\\\", \\\"message_id\\\", \\\"model\\\", \\\"model_id\\\", \\\"params\\\", \\\"session_id\\\", \\\"skill_ids\\\", \\\"sources\\\", \\\"system_prompt\\\", \\\"task_id\\\", \\\"terminal_id\\\", \\\"tool_ids\\\", \\\"tool_servers\\\", \\\"tools\\\", \\\"user_agent\\\", \\\"user_id\\\", \\\"user_message\\\", \\\"user_message_id\\\", \\\"user_prompt\\\", \\\"variables\\\"], \\\"seen_chat_id_prefix\\\": \\\"local:exec-a04\\\"}\"}]",
+    "timedOut": false
+   }
+  },
+  "reply_check": {
+   "A_reply_names_alice_not_bob": true,
+   "B_reply_names_bob_not_alice": true,
+   "A_reply_never_names_runtime_account": true
+  },
+  "negative": {
+   "unknown_chat_id": 404,
+   "other_users_chat_id_without_key": 401,
+   "expired_context": 410,
+   "missing_chat_id": 404
+  }
+ },
+ "gatewayLog": [
+  {
+   "chat_id_prefix": "local:exec-a04ba52",
+   "found": true,
+   "expired": false,
+   "user": "bob@newmanu.edu"
+  },
+  {
+   "chat_id_prefix": "local:exec-0def68d",
+   "found": true,
+   "expired": false,
+   "user": "alice@newmanu.edu"
+  },
+  {
+   "chat_id_prefix": "local:exec-0000000",
+   "found": false,
+   "expired": false
+  },
+  {
+   "chat_id_prefix": "local:exec-2dcb7c7",
+   "found": true,
+   "expired": true,
+   "user": "alice@newmanu.edu"
+  },
+  {
+   "chat_id_prefix": "undefined",
+   "found": false,
+   "expired": false
+  }
+ ],
+ "connectLog": [
+  {
+   "attempt": 0,
+   "ms": 37
+  },
+  {
+   "attempt": 0,
+   "ms": 27
+  }
+ ]
+}

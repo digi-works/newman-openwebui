@@ -1,0 +1,580 @@
+<title>Digiworks Agent Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* shadcn/ui look: zinc neutrals, near-black primary, 1px borders, 0.5rem radius, Geist. Login split screen, then app shell = sidebar + main. */
+:root{
+  --bg:#FAFAFA; --surface:#FFFFFF; --surface-2:#F4F4F5; --line:#E4E4E7;
+  --fg:#09090B; --muted:#71717A; --accent:#18181B; --accent-fg:#FAFAFA; --accent-soft:#F4F4F5;
+  --good:#16A34A; --warn:#D97706; --shadow:0 1px 2px rgba(0,0,0,.05);
+  --ring:rgba(9,9,11,.14);
+  --f-display:"Geist","Segoe UI",system-ui,sans-serif;
+  --f-body:"Geist","Segoe UI",system-ui,sans-serif;
+  --f-mono:"Geist Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#09090B; --surface:#111113; --surface-2:#27272A; --line:#27272A;
+  --fg:#FAFAFA; --muted:#A1A1AA; --accent:#FAFAFA; --accent-fg:#18181B; --accent-soft:#27272A;
+  --good:#4ADE80; --warn:#FBBF24; --shadow:0 1px 2px rgba(0,0,0,.4); --ring:rgba(250,250,250,.2); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#09090B; --surface:#111113; --surface-2:#27272A; --line:#27272A;
+  --fg:#FAFAFA; --muted:#A1A1AA; --accent:#FAFAFA; --accent-fg:#18181B; --accent-soft:#27272A;
+  --good:#4ADE80; --warn:#FBBF24; --shadow:0 1px 2px rgba(0,0,0,.4); --ring:rgba(250,250,250,.2); color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14.5px;line-height:1.5;display:flex;flex-direction:column}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2,h3{font-family:var(--f-display);margin:0;font-weight:600;letter-spacing:-.025em;text-wrap:balance}
+p{margin:0}
+:focus-visible{outline:none;box-shadow:0 0 0 3px var(--ring);border-color:var(--muted)}
+svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* mockup jump bar */
+.mock{flex:none;display:flex;gap:6px;align-items:center;padding:6px 16px;background:var(--fg);color:var(--bg);font-size:12px;overflow-x:auto;white-space:nowrap}
+.mock b{font-family:var(--f-mono);font-weight:500;letter-spacing:.06em;text-transform:uppercase;font-size:11px;margin-right:6px;opacity:.7}
+.mock button{background:transparent;border:1px solid color-mix(in srgb,var(--bg) 35%,transparent);color:var(--bg);border-radius:99px;padding:2px 10px;font-size:12px}
+.mock button.on{background:var(--bg);color:var(--fg)}
+#app{flex:1;min-height:0;position:relative}
+.screen{position:absolute;inset:0;overflow:auto}
+[hidden]{display:none!important}
+
+/* buttons / inputs */
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:8px 14px;font-weight:500;font-size:14px;box-shadow:var(--shadow)}
+.btn:hover{background:var(--surface-2)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.pri:hover{background:color-mix(in srgb,var(--accent) 88%,var(--bg))}
+.btn.lg{padding:10px 18px;border-radius:7px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field label{font-size:13px;font-weight:600}
+.input{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:9px 12px;box-shadow:var(--shadow)}
+.tag{font-size:12px;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;border:1px solid var(--line);border-radius:99px;padding:2px 10px;color:var(--fg);background:var(--surface)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--good)}
+.av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:600;font-size:14px;flex:none;background:var(--surface-2);color:var(--fg);border:1px solid var(--line)}
+.av.sm{width:30px;height:30px;font-size:12px}
+.av.lg{width:60px;height:60px;font-size:22px}
+
+/* LOGIN */
+#s-login{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)}
+.brandpane{background:#09090B;color:#FAFAFA;padding:40px clamp(24px,5vw,72px);display:flex;flex-direction:column;justify-content:space-between;gap:32px;position:relative;overflow:hidden}
+.brandpane .logo i{background:#FAFAFA;color:#18181B}
+.brandpane::after{content:"";position:absolute;right:-120px;bottom:-120px;width:420px;height:420px;border-radius:50%;border:1px solid rgba(255,255,255,.1);box-shadow:0 0 0 60px rgba(255,255,255,.03),0 0 0 120px rgba(255,255,255,.025)}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:700;font-size:20px}
+.logo i{width:32px;height:32px;border-radius:8px;background:var(--accent);display:grid;place-items:center;color:var(--accent-fg);font-style:normal;font-size:17px}
+.brandpane h1{font-size:clamp(30px,4vw,48px);line-height:1.08;max-width:14ch}
+.brandpane p{color:#A8B6C4;max-width:40ch;margin-top:14px}
+.brandpane .hostbar{font-family:var(--f-mono);font-size:12px;color:#8798A8;position:relative;z-index:1}
+.loginpane{display:grid;place-items:center;padding:32px 24px}
+.loginbox{width:100%;max-width:380px}
+.loginbox h2{font-size:28px;margin-bottom:6px}
+.loginbox .sub{color:var(--muted);margin-bottom:24px}
+.sso{display:grid;gap:10px;margin-bottom:18px}
+.sso .btn{justify-content:center;width:100%;padding:10px}
+.or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px;margin:6px 0 16px}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.row{display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:18px}
+.row a{color:var(--fg);text-decoration:underline;text-underline-offset:3px;font-weight:500}
+.powered{margin-top:28px;font-size:12px;color:var(--muted);text-align:center}
+
+/* APP SHELL */
+#s-app{display:grid;grid-template-columns:232px minmax(0,1fr);overflow:hidden}
+.side{background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:16px 12px;gap:4px;min-height:0;overflow:auto}
+.side .logo{padding:4px 8px 16px;font-size:18px}
+.side .logo i{width:28px;height:28px;font-size:15px}
+.nav{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;border:0;background:transparent;color:var(--muted);text-align:left;font-weight:500;width:100%}
+.nav:hover{background:var(--surface-2);color:var(--fg)}
+.nav.on{background:var(--surface-2);color:var(--fg)}
+.nav .n{margin-left:auto;font-family:var(--f-mono);font-size:11px}
+.side .grow{flex:1}
+.me{display:flex;gap:10px;align-items:center;padding:10px;border-top:1px solid var(--line);margin-top:8px}
+.me .av{width:32px;height:32px;font-size:12px}
+.me small{display:block;color:var(--muted);font-size:12px;line-height:1.2}
+.me button{margin-left:auto;border:0;background:none;color:var(--muted);padding:4px}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.top{flex:none;display:flex;align-items:center;gap:12px;padding:10px 28px;border-bottom:1px solid var(--line);background:var(--bg)}
+.search{position:relative;flex:1;max-width:520px}
+.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.search .input{padding-left:36px}
+.top .spacer{flex:1}
+.iconbtn{border:1px solid var(--line);background:var(--surface);border-radius:7px;width:36px;height:36px;display:grid;place-items:center;color:var(--muted)}
+.iconbtn:hover{color:var(--fg);background:var(--surface-2)}
+.views{flex:1;min-height:0;position:relative}
+.view{position:absolute;inset:0;overflow:auto;padding:28px;background:var(--bg)}
+.wrap{max-width:1120px;margin:0 auto}
+.hello h1{font-size:28px}
+.hello p{color:var(--muted);margin-top:4px}
+.sect{margin-top:30px}
+.sect h3{font-size:17px;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.recent{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.rc{display:flex;gap:12px;align-items:flex-start;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0;box-shadow:var(--shadow)}
+.rc:hover{background:var(--surface-2)}
+.rc b{display:block;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rc span{color:var(--muted);font-size:12.5px;display:block}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:4px 12px;font-size:13px;font-weight:500;color:var(--muted)}
+.chip:hover{color:var(--fg);background:var(--surface-2)}
+.chip.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:20px;display:flex;flex-direction:column;gap:12px;text-align:left;position:relative;min-width:0;transition:border-color .15s,box-shadow .15s}
+.card:hover{background:var(--surface-2)}
+.card .hd{display:flex;gap:12px;align-items:center;padding-right:30px}
+.card h4{margin:0;font-weight:600;font-size:15px;letter-spacing:-.01em;line-height:1.25}
+.card p{color:var(--muted);font-size:13.5px;flex:1}
+.card .ft{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--muted)}
+.card .go{color:var(--fg);font-weight:500;display:flex;align-items:center;gap:4px}
+.star{position:absolute;top:14px;right:14px;border:0;background:none;color:var(--muted);padding:2px;border-radius:6px}
+.star.on{color:var(--warn)}
+.star.on svg{fill:currentColor}
+.empty{padding:40px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:14px}
+
+/* DETAIL */
+.crumb{font-size:13px;color:var(--muted);margin-bottom:16px}
+.crumb button{border:0;background:none;color:var(--fg);padding:0;font-weight:500;text-decoration:underline;text-underline-offset:3px}
+.dhead{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.dhead h1{font-size:30px}
+.dhead .meta{flex:1;min-width:220px}
+.dhead .meta p{color:var(--muted);margin-top:4px;max-width:60ch}
+.dbtns{display:flex;gap:8px}
+.dgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;margin-top:26px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:20px}
+.panel+.panel{margin-top:16px}
+.panel h3{font-size:16px;margin-bottom:12px}
+.list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.list li{display:flex;gap:10px;align-items:flex-start}
+.list svg{color:var(--good);margin-top:2px}
+.prompts{display:grid;gap:8px}
+.prompt{display:flex;justify-content:space-between;gap:12px;align-items:center;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.prompt:hover{background:var(--surface-2)}
+.prompt svg{color:var(--muted)}
+.kv{display:grid;gap:12px;font-size:13.5px}
+.kv div{display:flex;justify-content:space-between;gap:12px}
+.kv span:first-child{color:var(--muted)}
+.tools{display:grid;gap:8px}
+.tool{display:flex;align-items:center;gap:10px;font-size:13.5px}
+.note{font-size:12.5px;color:var(--muted);background:var(--surface-2);border-radius:8px;padding:12px;margin-top:14px;display:flex;gap:8px}
+
+/* CHAT */
+#v-chat{padding:0;overflow:hidden;display:grid;grid-template-columns:260px minmax(0,1fr)}
+.convos{border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;min-height:0}
+.convos .hd{padding:14px;display:flex;gap:8px;align-items:center;justify-content:space-between}
+.convos .hd b{font-weight:600}
+.convos .lst{overflow:auto;padding:0 8px 12px;display:grid;gap:2px;align-content:start}
+.ci{display:block;width:100%;text-align:left;border:0;background:transparent;padding:8px 10px;border-radius:7px;min-width:0}
+.ci:hover{background:var(--surface-2)}
+.ci.on{background:var(--surface-2)}
+.ci b{display:block;font-weight:500;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ci span{font-size:12px;color:var(--muted)}
+.chat{display:flex;flex-direction:column;min-width:0;min-height:0}
+.chead{flex:none;display:flex;align-items:center;gap:12px;padding:12px 24px;border-bottom:1px solid var(--line);background:var(--surface)}
+.chead .t{min-width:0}
+.chead b{font-weight:600;font-size:15px;display:block;line-height:1.2}
+.chead small{color:var(--muted);display:flex;align-items:center;gap:6px;font-size:12.5px}
+.chead .sp{flex:1}
+.menuwrap{position:relative}
+.menu{position:absolute;right:0;top:calc(100% + 6px);width:270px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:6px;z-index:5;max-height:340px;overflow:auto}
+.menu button{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:0;background:none;padding:8px;border-radius:8px}
+.menu button:hover{background:var(--surface-2)}
+.menu small{display:block;color:var(--muted);font-size:12px;line-height:1.2}
+.msgs{flex:1;overflow:auto;padding:24px;scroll-behavior:smooth;background:var(--bg)}
+.msgcol{max-width:760px;margin:0 auto;display:grid;gap:22px}
+.m{display:flex;gap:12px;min-width:0}
+.m.u{justify-content:flex-end}
+.bubble{background:var(--accent);color:var(--accent-fg);padding:10px 14px;border-radius:16px 16px 4px 16px;max-width:80%;white-space:pre-wrap}
+.ans{min-width:0;flex:1}
+.ans p+p{margin-top:10px}
+.tcall{display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;font-size:12.5px;font-family:var(--f-mono);margin-bottom:10px;color:var(--muted)}
+.tcall .ok{color:var(--good)}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--accent);animation:sp .8s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+.tw{overflow-x:auto;margin:12px 0;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;background:var(--surface)}
+th,td{padding:8px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+th{font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:500;background:var(--bg)}
+tr:last-child td{border-bottom:0}
+.over{color:var(--warn);font-weight:600}
+.srcs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.src{display:inline-flex;align-items:center;gap:6px;font-size:12px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:3px 9px;color:var(--muted)}
+.fb{display:flex;gap:4px;margin-top:10px}
+.fb button{border:0;background:none;color:var(--muted);padding:5px;border-radius:7px}
+.fb button:hover,.fb button.on{background:var(--surface-2);color:var(--fg)}
+.welcome{text-align:center;padding:36px 0 8px}
+.welcome .av{margin:0 auto 14px}
+.welcome h2{font-size:22px}
+.welcome p{color:var(--muted);margin-top:6px}
+.starts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:22px;text-align:left}
+.composer{flex:none;padding:12px 24px 16px;background:var(--bg)}
+.cbox{max-width:760px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 10px 10px 14px;display:flex;gap:8px;align-items:flex-end;box-shadow:var(--shadow)}
+.cbox:focus-within{border-color:var(--muted);box-shadow:0 0 0 3px var(--ring)}
+.cbox textarea{flex:1;border:0;background:none;resize:none;outline:none;box-shadow:none;max-height:140px;padding:6px 0;min-height:24px}
+.cbox .send{background:var(--accent);color:var(--accent-fg);border:0;border-radius:7px;width:36px;height:36px;display:grid;place-items:center}
+.cbox .send:disabled{opacity:.4;cursor:default}
+.foot{max-width:760px;margin:8px auto 0;text-align:center;font-size:12px;color:var(--muted)}
+
+/* HISTORY */
+.hrow{display:flex;gap:14px;align-items:center;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:12px 14px;min-width:0}
+.hrow:hover{background:var(--surface-2)}
+.hrow .t{flex:1;min-width:0}
+.hrow b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow span{color:var(--muted);font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow time{font-family:var(--f-mono);font-size:12px;color:var(--muted);flex:none}
+.grp{display:grid;gap:8px;margin-bottom:24px}
+.grp>.tag{margin-bottom:2px}
+
+@media (max-width:1100px){#v-chat{grid-template-columns:minmax(0,1fr)}.convos{display:none}}
+@media (max-width:860px){
+  #s-login{grid-template-columns:1fr}.brandpane{padding:24px;gap:20px}.brandpane h1{font-size:28px}.brandpane .logo i{background:#FAFAFA;color:#18181B}
+.brandpane::after{display:none}
+  #s-app{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}
+  .side{flex-direction:row;align-items:center;border-right:0;border-bottom:1px solid var(--line);padding:8px 12px;overflow-x:auto;gap:4px}
+  .side .logo{padding:0 8px 0 0}.side .logo span,.side .grow,.me,.nav .n{display:none}
+  .nav{width:auto;white-space:nowrap}
+  .top{padding:10px 16px}.view{padding:20px 16px}
+  .dgrid{grid-template-columns:1fr}
+  .chead,.composer,.msgs{padding-left:16px;padding-right:16px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;scroll-behavior:auto!important;transition:none!important}}
+</style>
+
+<div class="mock"><b>Mockup</b><span style="opacity:.7">Jump to:</span>
+  <button data-go="login" class="on">1 Login</button>
+  <button data-go="home">2 Agents</button>
+  <button data-go="agent">3 Agent detail</button>
+  <button data-go="chat">4 Chat</button>
+  <button data-go="history">5 History</button>
+  <button id="themeBtn">Toggle theme</button>
+</div>
+
+<div id="app">
+
+<!-- LOGIN -->
+<section class="screen" id="s-login">
+  <div class="brandpane">
+    <div class="logo"><i>A</i> Acme AI</div>
+    <div style="position:relative;z-index:1">
+      <h1>Your team's AI agents, in one place.</h1>
+      <p>Ask the finance analyst, check a policy, review a contract. Every agent works with Acme's own data and stays inside Acme's environment.</p>
+    </div>
+    <div class="hostbar">acme.digiworks.ai &nbsp;·&nbsp; Powered by Digiworks</div>
+  </div>
+  <div class="loginpane">
+    <form class="loginbox" id="loginForm">
+      <h2>Sign in</h2>
+      <p class="sub">Use your Acme account to continue.</p>
+      <div class="sso">
+        <button type="button" class="btn lg" data-login>
+          <svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="8"/><rect x="3" y="13" width="8" height="8"/><rect x="13" y="13" width="8" height="8"/></svg>
+          Continue with Microsoft</button>
+        <button type="button" class="btn lg" data-login>
+          <svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+          Continue with Google</button>
+      </div>
+      <div class="or">or use email</div>
+      <div class="field"><label for="em">Work email</label><input id="em" class="input" type="email" value="priya.nair@acme.com" autocomplete="username"></div>
+      <div class="field" style="margin-bottom:8px"><label for="pw">Password</label><input id="pw" class="input" type="password" value="password123" autocomplete="current-password"></div>
+      <div class="row"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" checked> Keep me signed in</label><a href="#" onclick="return false">Forgot password?</a></div>
+      <button class="btn pri lg" style="width:100%;justify-content:center" id="loginBtn">Sign in</button>
+      <p class="powered">Need access? Contact your Acme IT administrator.<br>Powered by Digiworks</p>
+    </form>
+  </div>
+</section>
+
+<!-- APP -->
+<section class="screen" id="s-app" hidden>
+  <aside class="side">
+    <div class="logo"><i>A</i><span>Acme AI</span></div>
+    <button class="nav on" data-view="home"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Agents<span class="n" id="nAgents"></span></button>
+    <button class="nav" data-view="chat"><svg class="i" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Chat</button>
+    <button class="nav" data-view="history"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>History<span class="n" id="nHist"></span></button>
+    <button class="nav" data-fav><svg class="i" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Favorites<span class="n" id="nFav"></span></button>
+    <div class="grow"></div>
+    <button class="nav"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01"/></svg>Help</button>
+    <div class="me"><div class="av">PN</div><div><b style="font-weight:600">Priya Nair</b><small>Finance</small></div>
+      <button title="Sign out" id="signout"><svg class="i" viewBox="0 0 24 24"><path d="M9 4H5v16h4M16 8l4 4-4 4M20 12H9"/></svg></button></div>
+  </aside>
+
+  <div class="main">
+    <div class="top">
+      <div class="search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="q" placeholder="Search agents (try “contract” or “invoice”)" aria-label="Search agents"></div>
+      <div class="spacer"></div>
+      <button class="iconbtn" title="Notifications"><svg class="i" viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 6 2 7 2 7H4s2-1 2-7zM10 20a2 2 0 0 0 4 0"/></svg></button>
+    </div>
+
+    <div class="views">
+      <!-- HOME -->
+      <div class="view" id="v-home"><div class="wrap">
+        <div class="hello"><h1 id="greet">Good morning, Priya</h1><p>Pick an agent to start. Everything stays within Acme's data.</p></div>
+        <div class="sect" id="recentSect"><h3>Continue where you left off</h3><div class="recent" id="recent"></div></div>
+        <div class="sect"><h3>Agents</h3>
+          <div class="chips" id="chips"></div>
+          <div class="grid" id="grid"></div>
+        </div>
+      </div></div>
+
+      <!-- DETAIL -->
+      <div class="view" id="v-agent" hidden><div class="wrap" id="detail"></div></div>
+
+      <!-- CHAT -->
+      <div class="view" id="v-chat" hidden>
+        <div class="convos">
+          <div class="hd"><b>Conversations</b><button class="btn" id="newChat" style="padding:5px 10px"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New</button></div>
+          <div class="lst" id="convoList"></div>
+        </div>
+        <div class="chat">
+          <div class="chead">
+            <div class="av sm" id="chAv"></div>
+            <div class="t"><b id="chName"></b><small><span class="dot"></span><span id="chSub"></span></small></div>
+            <div class="sp"></div>
+            <div class="menuwrap">
+              <button class="btn" id="swBtn">Switch agent <svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+              <div class="menu" id="swMenu" hidden></div>
+            </div>
+          </div>
+          <div class="msgs" id="msgs"><div class="msgcol" id="msgcol"></div></div>
+          <div class="composer">
+            <div class="cbox">
+              <button class="iconbtn" style="border:0;width:34px;height:34px" title="Attach a file"><svg class="i" viewBox="0 0 24 24"><path d="m21 11-9 9a5 5 0 0 1-7-7l9-9a3.5 3.5 0 0 1 5 5l-9 9a2 2 0 0 1-3-3l8-8"/></svg></button>
+              <textarea id="ta" rows="1" placeholder="Message the agent…" aria-label="Message"></textarea>
+              <button class="send" id="send" disabled title="Send"><svg class="i" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+            </div>
+            <div class="foot">AI can make mistakes. Check important figures against the source.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORY -->
+      <div class="view" id="v-history" hidden><div class="wrap" style="max-width:820px">
+        <div class="hello"><h1>History</h1><p>Your past conversations with agents.</p></div>
+        <div class="sect" id="histList"></div>
+      </div></div>
+    </div>
+  </div>
+</section>
+</div>
+
+<script>
+const ICON={
+  check:'<svg class="i" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>',
+  arrow:'<svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  star:'<svg class="i" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>',
+  doc:'<svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M14 3H6v18h12V7zM14 3v4h4"/></svg>',
+  db:'<svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>',
+  up:'<svg class="i" viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-8c2 0 3 1.5 2.5 3.5L13 9h6a2 2 0 0 1 2 2.3l-1.2 7A2 2 0 0 1 18 20H7"/></svg>',
+  down:'<svg class="i" viewBox="0 0 24 24"><path d="M7 13V4H4v9zM7 13l4 8c2 0 3-1.5 2.5-3.5L13 15h6a2 2 0 0 0 2-2.3l-1.2-7A2 2 0 0 0 18 4H7"/></svg>',
+  copy:'<svg class="i" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/></svg>',
+  lock:'<svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px;margin-top:2px"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>'
+};
+const AGENTS=[
+ {id:'fin',n:'Finance Analyst',cat:'Finance',h:215,ini:'F',d:'Answers spend, budget and invoice questions straight from the ERP, with sources.',long:'Looks up purchase invoices, budgets and cost centres, compares actuals to plan, and explains variances in plain language.',can:['Compare actual spend to budget by cost centre','Find and summarise supplier invoices','Explain month-on-month variances','Draft a variance note for the monthly review'],tools:[['ERP · Invoices & budgets','Live'],['Finance policies (SharePoint)','Synced 2h ago']],ask:['How did Q3 spend compare to budget by department?','Which suppliers have overdue invoices over $10k?','Draft a variance note for marketing spend in September'],owner:'Finance Systems',ver:'2.4',upd:'12 Sep 2026',rate:'4.7',access:'Finance, Leadership',limits:'Read-only access. It cannot approve or post payments.'},
+ {id:'hr',n:'HR Policy Assistant',cat:'People',h:160,ini:'H',d:'Answers leave, benefits and policy questions with the exact clause cited.',long:'Answers employee questions from the current handbook and policy library, and points to the right form or contact.',can:['Explain leave, travel and expense rules','Find the right form for a request','Summarise policy changes since last review'],tools:[['HR handbook (SharePoint)','Synced 1d ago'],['Leave balances (HRIS)','Live']],ask:['How many days of parental leave do I get?','What is the travel expense limit for Singapore?'],owner:'People Operations',ver:'1.9',upd:'3 Sep 2026',rate:'4.5',access:'All staff',limits:'Cannot change records. Sensitive cases go to an HR partner.'},
+ {id:'con',n:'Contract Reviewer',cat:'Legal',h:28,ini:'C',d:'Flags risky clauses in a contract and compares them to Acme’s standard terms.',long:'Upload a contract and get a clause-by-clause review against Acme’s playbook, with suggested fallback wording.',can:['Flag non-standard liability and termination clauses','Compare against the legal playbook','Suggest redline wording'],tools:[['Legal playbook','Synced 5d ago'],['Contract repository','Live']],ask:['Review this MSA and list the high-risk clauses','Is a 90-day termination notice acceptable?'],owner:'Legal & Compliance',ver:'3.1',upd:'28 Aug 2026',rate:'4.6',access:'Legal, Procurement, Sales',limits:'Not legal advice. Material contracts need counsel sign-off.'},
+ {id:'sal',n:'Sales Briefing',cat:'Sales',h:290,ini:'S',d:'Prepares account briefs before a customer call from CRM and recent news.',long:'Pulls account history, open opportunities and recent activity into a one-page brief before your meeting.',can:['Build a one-page account brief','Summarise open opportunities and risks','Suggest talking points'],tools:[['CRM · Accounts & deals','Live'],['Call notes','Synced 30m ago']],ask:['Prepare a brief for my 3pm call with Northwind','Which of my deals have gone quiet for 14 days?'],owner:'Revenue Operations',ver:'1.6',upd:'17 Sep 2026',rate:'4.4',access:'Sales',limits:'Reads CRM only. It does not update deal stages.'},
+ {id:'it',n:'IT Helpdesk',cat:'IT',h:195,ini:'I',d:'Fixes common issues, resets access requests and raises a ticket if it can’t.',long:'Walks through common problems, checks service status, and files a ticket with the details already filled in.',can:['Troubleshoot VPN, email and printer issues','Check service status','Raise a ticket with context'],tools:[['Service desk','Live'],['Knowledge base','Synced 3h ago']],ask:['My VPN keeps disconnecting on Wi-Fi','Request access to the shared finance drive'],owner:'IT Operations',ver:'2.0',upd:'22 Sep 2026',rate:'4.3',access:'All staff',limits:'Cannot grant access directly. Requests go through approvers.'},
+ {id:'pro',n:'Procurement Assistant',cat:'Finance',h:340,ini:'P',d:'Finds approved suppliers, checks PO status and guides you through purchasing rules.',long:'Helps you find an approved supplier, check the status of a purchase order, and follow the right approval path.',can:['Find approved suppliers by category','Check purchase order status','Explain approval thresholds'],tools:[['ERP · Purchase orders','Live'],['Supplier master','Synced 6h ago']],ask:['What is the status of PO-48213?','Which approved suppliers offer laptops?'],owner:'Procurement',ver:'1.3',upd:'9 Sep 2026',rate:'4.2',access:'All staff',limits:'Cannot create or approve purchase orders.'},
+ {id:'mee',n:'Meeting Summarizer',cat:'People',h:95,ini:'M',d:'Turns a transcript into decisions, owners and next steps.',long:'Paste or upload a transcript and get a short summary, a decision log and an action list with owners.',can:['Summarise a meeting in five lines','List decisions and owners','Draft the follow-up email'],tools:[['File upload','Ready']],ask:['Summarise this transcript and list actions by owner'],owner:'Digiworks',ver:'1.1',upd:'1 Sep 2026',rate:'4.5',access:'All staff',limits:'Works only on content you provide.'},
+ {id:'cmp',n:'Compliance Checker',cat:'Legal',h:5,ini:'K',d:'Checks a document or process against Acme’s compliance policies.',long:'Compares a draft policy, vendor form or process note against internal compliance rules and flags gaps.',can:['Check a document against policy','Flag missing approvals or data-handling gaps','Summarise regulatory changes'],tools:[['Compliance library','Synced 1d ago']],ask:['Does this vendor onboarding form meet our data-handling policy?'],owner:'Legal & Compliance',ver:'1.2',upd:'14 Sep 2026',rate:'4.4',access:'Legal, Finance, Procurement',limits:'Advisory only. A compliance officer makes the final call.'}
+];
+const CATS=['All',...new Set(AGENTS.map(a=>a.cat))];
+const by=id=>AGENTS.find(a=>a.id===id);
+const st={view:'home',agent:'fin',cat:'All',fav:new Set(['fin','hr']),favOnly:false,q:'',cur:null,
+  chats:[
+   {id:1,agent:'fin',title:'Q3 spend vs budget by department',when:'Today, 9:12',grp:'Today',msgs:null},
+   {id:2,agent:'hr',title:'Parental leave entitlement',when:'Yesterday',grp:'Yesterday',msgs:null},
+   {id:3,agent:'con',title:'Northwind MSA: risky clauses',when:'Tue',grp:'Earlier this week',msgs:null},
+   {id:4,agent:'it',title:'VPN disconnecting on Wi-Fi',when:'Mon',grp:'Earlier this week',msgs:null},
+   {id:5,agent:'sal',title:'Brief for Fabrikam renewal call',when:'18 Sep',grp:'Last week',msgs:null}]};
+
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const av=(a,c='')=>`<div class="av ${c}">${a.ini}</div>`;
+
+/* top-level screens */
+function showScreen(s){
+  $('#s-login').hidden = s!=='login'; $('#s-app').hidden = s==='login';
+  $$('.mock [data-go]').forEach(b=>b.classList.toggle('on', b.dataset.go===(s==='login'?'login':st.view==='home'?'home':st.view==='agent'?'agent':st.view==='chat'?'chat':'history')));
+  if(s!=='login') go(st.view);
+}
+function go(v,opts={}){
+  st.view=v; if(v!=='home') st.favOnly=false;
+  ['home','agent','chat','history'].forEach(x=>$('#v-'+x).hidden = x!==v);
+  $$('.nav[data-view]').forEach(n=>n.classList.toggle('on', n.dataset.view===v || (v==='agent'&&n.dataset.view==='home')));
+  $('[data-fav]').classList.toggle('on', v==='home'&&st.favOnly);
+  if(v==='home'){renderHome()} if(v==='agent'){renderDetail()} if(v==='chat'){renderChat()} if(v==='history'){renderHistory()}
+  $$('.mock [data-go]').forEach(b=>b.classList.toggle('on', b.dataset.go===(v==='home'?'home':v)));
+  document.querySelector('.view:not([hidden])')?.scrollTo?.(0,0);
+}
+$$('.mock [data-go]').forEach(b=>b.onclick=()=>{
+  const t=b.dataset.go;
+  if(t==='login'){showScreen('login');$$('.mock [data-go]').forEach(x=>x.classList.toggle('on',x===b));return}
+  if(t==='chat'&&!st.cur){st.cur=st.chats[0]}
+  $('#s-login').hidden=true;$('#s-app').hidden=false;go(t);
+});
+$('#themeBtn').onclick=()=>{
+  const r=document.documentElement, dark=getComputedStyle(r).colorScheme.includes('dark');
+  r.setAttribute('data-theme',dark?'light':'dark');
+};
+$$('[data-login]').forEach(b=>b.onclick=doLogin);
+$('#loginForm').onsubmit=e=>{e.preventDefault();doLogin()};
+function doLogin(){
+  const b=$('#loginBtn'); b.innerHTML='<span class="spin" style="border-top-color:currentColor"></span> Signing in…';
+  setTimeout(()=>{b.textContent='Sign in';showScreen('app');},700);
+}
+$('#signout').onclick=()=>showScreen('login');
+$$('.nav[data-view]').forEach(n=>n.onclick=()=>{ if(n.dataset.view==='chat'&&!st.cur){st.cur={id:0,agent:st.agent,title:'New chat',msgs:[]}} go(n.dataset.view)});
+$('[data-fav]').onclick=()=>{st.favOnly=!st.favOnly;st.cat='All';go('home');$('[data-fav]').classList.toggle('on',st.favOnly)};
+$('#q').oninput=e=>{st.q=e.target.value.trim().toLowerCase(); if(st.view!=='home')go('home'); else renderHome()};
+
+/* HOME */
+function match(a){
+  if(st.favOnly&&!st.fav.has(a.id))return false;
+  if(st.cat!=='All'&&a.cat!==st.cat)return false;
+  const t=(a.n+' '+a.d+' '+a.cat+' '+a.can.join(' ')).toLowerCase();
+  return !st.q||t.includes(st.q);
+}
+function renderHome(){
+  const h=new Date().getHours(); $('#greet').textContent=`${h<12?'Good morning':h<18?'Good afternoon':'Good evening'}, Priya`;
+  $('#nAgents').textContent=AGENTS.length; $('#nFav').textContent=st.fav.size; $('#nHist').textContent=st.chats.length;
+  $('#recentSect').hidden = !!st.q||st.favOnly;
+  $('#recent').innerHTML=st.chats.slice(0,3).map(c=>{const a=by(c.agent);return `<button class="rc" data-open="${c.id}">${av(a,'sm')}<div style="min-width:0"><b>${c.title}</b><span>${a.n} · ${c.when}</span></div></button>`}).join('');
+  $('#chips').innerHTML=CATS.map(c=>`<button class="chip ${c===st.cat&&!st.favOnly?'on':''}" data-cat="${c}">${c}</button>`).join('')+(st.favOnly?'<button class="chip on" data-cat="All">★ Favorites</button>':'');
+  const list=AGENTS.filter(match);
+  $('#grid').innerHTML=list.length?list.map(a=>`
+   <div class="card" role="button" tabindex="0" data-agent="${a.id}">
+     <button class="star ${st.fav.has(a.id)?'on':''}" data-star="${a.id}" title="Favorite" aria-label="Favorite ${a.n}">${ICON.star}</button>
+     <div class="hd">${av(a)}<div><h4>${a.n}</h4><span class="pill" style="padding:0 8px;font-size:11px;color:var(--muted);margin-top:3px">${a.cat}</span></div></div>
+     <p>${a.d}</p>
+     <div class="ft"><span class="pill"><span class="dot"></span>Online</span><span class="go">Chat ${ICON.arrow}</span></div>
+   </div>`).join(''):`<div class="empty" style="grid-column:1/-1">No agents match “${st.q||'your filter'}”. Try another word, or clear the category.</div>`;
+}
+document.addEventListener('click',e=>{
+  const t=e.target;
+  const star=t.closest('[data-star]'); if(star){e.stopPropagation();const id=star.dataset.star;st.fav.has(id)?st.fav.delete(id):st.fav.add(id);renderHome();if(st.view==='agent')renderDetail();return}
+  const cat=t.closest('[data-cat]'); if(cat){st.cat=cat.dataset.cat;st.favOnly=false;renderHome();$('[data-fav]').classList.remove('on');return}
+  const ag=t.closest('[data-agent]'); if(ag){st.agent=ag.dataset.agent;go('agent');return}
+  const op=t.closest('[data-open]'); if(op){openChat(+op.dataset.open);return}
+  if(!t.closest('.menuwrap'))$('#swMenu').hidden=true;
+});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('.card')){e.target.click()}});
+
+/* DETAIL */
+function renderDetail(){
+  const a=by(st.agent);
+  $('#detail').innerHTML=`
+  <div class="crumb"><button data-view-back>Agents</button> / ${a.n}</div>
+  <div class="dhead">${av(a,'lg')}
+    <div class="meta"><h1>${a.n}</h1><p>${a.long}</p></div>
+    <div class="dbtns">
+      <button class="btn" data-star="${a.id}">${ICON.star} ${st.fav.has(a.id)?'Favorited':'Favorite'}</button>
+      <button class="btn pri lg" id="startChat">Start chat ${ICON.arrow}</button>
+    </div>
+  </div>
+  <div class="dgrid">
+    <div>
+      <div class="panel"><h3>What it can do</h3><ul class="list">${a.can.map(c=>`<li>${ICON.check}<span>${c}</span></li>`).join('')}</ul></div>
+      <div class="panel"><h3>Try asking</h3><div class="prompts">${a.ask.map(p=>`<button class="prompt" data-p="${p.replace(/"/g,'&quot;')}"><span>${p}</span>${ICON.arrow}</button>`).join('')}</div></div>
+      <div class="panel"><h3>Good to know</h3><p style="color:var(--muted)">${a.limits}</p></div>
+    </div>
+    <div>
+      <div class="panel"><h3>Details</h3><div class="kv">
+        <div><span>Owner</span><span>${a.owner}</span></div>
+        <div><span>Who can use it</span><span style="text-align:right">${a.access}</span></div>
+        <div><span>Version</span><span>${a.ver}</span></div>
+        <div><span>Updated</span><span>${a.upd}</span></div>
+        <div><span>Rating</span><span>★ ${a.rate} / 5</span></div></div></div>
+      <div class="panel"><h3>Connected to</h3><div class="tools">${a.tools.map(t=>`<div class="tool"><span class="dot"></span><span style="flex:1">${t[0]}</span><span class="tag">${t[1]}</span></div>`).join('')}</div>
+        <div class="note">${ICON.lock}<span>Runs inside Acme's environment. Your conversations are not used to train models.</span></div></div>
+    </div>
+  </div>`;
+  $('[data-view-back]').onclick=()=>go('home');
+  $('#startChat').onclick=()=>newChat(a.id);
+  $$('#detail [data-p]').forEach(b=>b.onclick=()=>newChat(a.id,b.dataset.p));
+}
+
+/* CHAT */
+function newChat(agentId,prompt){
+  st.agent=agentId; st.cur={id:Date.now(),agent:agentId,title:'New chat',msgs:[],when:'Just now',grp:'Today',fresh:true};
+  go('chat'); if(prompt) send(prompt);
+}
+function openChat(id){
+  const c=st.chats.find(x=>x.id===id); st.cur=c; st.agent=c.agent;
+  if(!c.msgs) c.msgs=seed(c);
+  go('chat');
+}
+function seed(c){
+  const a=by(c.agent);
+  if(c.agent==='fin') return [{r:'u',t:'How did Q3 spend compare to budget by department?'},{r:'a',html:finReply(),done:true}];
+  return [{r:'u',t:c.title},{r:'a',html:`<div class="tcall">${ICON.db}<span>Looked up ${a.tools[0][0]}</span><span class="ok" style="margin-left:auto">${ICON.check}</span></div><p>Here is what I found for “${c.title}”. This is an earlier conversation saved from ${c.when.toLowerCase()}.</p>`,done:true}];
+}
+function renderChat(){
+  if(!st.cur) st.cur=st.chats[0];
+  if(!st.cur.msgs) st.cur.msgs=seed(st.cur);
+  const a=by(st.cur.agent);
+  $('#chAv').outerHTML=`<div class="av sm" id="chAv">${a.ini}</div>`;
+  $('#chName').textContent=a.n; $('#chSub').textContent='Online · '+a.tools[0][0];
+  $('#ta').placeholder=`Message ${a.n}…`;
+  $('#convoList').innerHTML=st.chats.map(c=>`<button class="ci ${st.cur&&c.id===st.cur.id?'on':''}" data-open="${c.id}"><b>${c.title}</b><span>${by(c.agent).n} · ${c.when}</span></button>`).join('');
+  $('#swMenu').innerHTML=AGENTS.map(x=>`<button data-sw="${x.id}">${av(x,'sm')}<span><b style="font-weight:600">${x.n}</b><small>${x.cat}</small></span></button>`).join('');
+  drawMsgs();
+}
+function drawMsgs(){
+  const a=by(st.cur.agent), col=$('#msgcol');
+  if(!st.cur.msgs.length){
+    col.innerHTML=`<div class="welcome">${av(a,'lg')}<h2>${a.n}</h2><p>${a.d}</p>
+      <div class="starts">${a.ask.map(p=>`<button class="prompt" data-p="${p.replace(/"/g,'&quot;')}"><span>${p}</span>${ICON.arrow}</button>`).join('')}</div></div>`;
+    $$('#msgcol [data-p]').forEach(b=>b.onclick=()=>send(b.dataset.p));
+    return;
+  }
+  col.innerHTML=st.cur.msgs.map(m=>m.r==='u'?`<div class="m u"><div class="bubble">${esc(m.t)}</div></div>`:
+    `<div class="m">${av(a,'sm')}<div class="ans">${m.html}${m.done?`<div class="fb"><button title="Good answer">${ICON.up}</button><button title="Needs work">${ICON.down}</button><button title="Copy">${ICON.copy}</button></div>`:''}</div></div>`).join('');
+  $('#msgs').scrollTop=$('#msgs').scrollHeight;
+  $$('#msgcol .fb button').forEach(b=>b.onclick=()=>b.classList.toggle('on'));
+}
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function finReply(){return `<div class="tcall">${ICON.db}<span>Queried ERP · budget vs actual, Jul–Sep 2026</span><span class="ok" style="margin-left:auto">${ICON.check}</span></div>
+<p>Total Q3 spend was <b>$4.82M against a $4.60M budget</b>, 4.8% over. Marketing and IT account for almost all of the overrun.</p>
+<div class="tw"><table><thead><tr><th>Department</th><th>Budget</th><th>Actual</th><th>Variance</th></tr></thead><tbody>
+<tr><td>Operations</td><td>$1.90M</td><td>$1.87M</td><td>−1.6%</td></tr>
+<tr><td>Marketing</td><td>$0.95M</td><td>$1.08M</td><td class="over">+13.7%</td></tr>
+<tr><td>IT</td><td>$0.88M</td><td>$0.97M</td><td class="over">+10.2%</td></tr>
+<tr><td>Sales</td><td>$0.87M</td><td>$0.90M</td><td>+3.4%</td></tr></tbody></table></div>
+<p>Marketing's overrun is mostly the September campaign launch ($82k in agency fees). Want me to draft a variance note for the monthly review?</p>
+<div class="srcs"><span class="src">${ICON.db} ERP · Budget vs actual</span><span class="src">${ICON.doc} Finance policy: variance thresholds §4.2</span></div>
+<p class="tag" style="margin-top:10px">Sample data for mockup</p>`}
+function reply(a,text){
+  if(a.id==='fin') return finReply();
+  const t=a.tools[0][0];
+  return `<div class="tcall">${ICON.db}<span>Looked up ${t}</span><span class="ok" style="margin-left:auto">${ICON.check}</span></div>
+<p>Here is what I found about “${esc(text.length>80?text.slice(0,80)+'…':text)}”.</p>
+<p>In the live product this answer comes from ${a.n}'s connected sources, with each statement linked to where it came from. Ask a follow-up and I'll keep the context.</p>
+<div class="srcs"><span class="src">${ICON.doc} ${t}</span></div>
+<p class="tag" style="margin-top:10px">Sample reply for mockup</p>`;
+}
+function send(text){
+  text=(text||$('#ta').value).trim(); if(!text)return;
+  const c=st.cur,a=by(c.agent);
+  c.msgs.push({r:'u',t:text});
+  if(c.fresh){c.title=text.length>44?text.slice(0,44)+'…':text; st.chats.unshift(c); c.fresh=false}
+  $('#ta').value='';autosize();
+  const m={r:'a',done:false,html:`<div class="tcall"><span class="spin"></span><span>Looking up ${a.tools[0][0]}…</span></div>`};
+  c.msgs.push(m); renderChat();
+  setTimeout(()=>{m.html=reply(a,text);m.done=true;if(st.view==='chat'&&st.cur===c)renderChat()},1300);
+}
+function autosize(){const t=$('#ta');t.style.height='auto';t.style.height=Math.min(t.scrollHeight,140)+'px';$('#send').disabled=!t.value.trim()}
+$('#ta').oninput=autosize;
+$('#ta').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}};
+$('#send').onclick=()=>send();
+$('#newChat').onclick=()=>newChat(st.cur?st.cur.agent:'fin');
+$('#swBtn').onclick=e=>{e.stopPropagation();$('#swMenu').hidden=!$('#swMenu').hidden};
+$('#swMenu').onclick=e=>{const b=e.target.closest('[data-sw]');if(b){newChat(b.dataset.sw)}};
+
+/* HISTORY */
+function renderHistory(){
+  $('#nHist').textContent=st.chats.length;
+  const q=st.q, groups={};
+  st.chats.filter(c=>!q||(c.title+by(c.agent).n).toLowerCase().includes(q)).forEach(c=>(groups[c.grp]=groups[c.grp]||[]).push(c));
+  const html=Object.entries(groups).map(([g,l])=>`<div class="grp"><div class="tag">${g}</div>${l.map(c=>{const a=by(c.agent);return `<button class="hrow" data-open="${c.id}">${av(a,'sm')}<div class="t"><b>${c.title}</b><span>${a.n}</span></div><time>${c.when}</time></button>`}).join('')}</div>`).join('');
+  $('#histList').innerHTML=html||`<div class="empty">No conversations match “${q}”.</div>`;
+}
+</script>

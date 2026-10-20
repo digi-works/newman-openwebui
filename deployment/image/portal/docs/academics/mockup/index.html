@@ -1,0 +1,747 @@
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Digi Academics Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the Ask Digi portal shell. Left sidebar = existing Platform group + a new Academics group (sections of pages, one per release). Main = page header + content. Right = sheets (detail) and the Ask Digi panel. v2 follows DigiWorks_Academic_PRD/TDD. */
+:root{
+  --bg:#fafafa; --surface:#ffffff; --muted-bg:#f4f4f6; --border:#e4e4e9; --fg:#0b0b12; --muted:#6c6c7a;
+  --primary:#11204b; --primary-fg:#fafafa; --primary-soft:#e8ecf6; --accent:#a12b2f; --sky:#8fb8de;
+  --good:#15803d; --good-bg:#e6f5ec; --warn:#b45309; --warn-bg:#fdf1dd; --bad:#b91c1c; --bad-bg:#fbe7e7; --info-bg:#e8f1fb; --info:#1d4f8f;
+  --shadow:0 1px 2px rgba(11,11,18,.06),0 6px 20px rgba(11,11,18,.06);
+  --font:"Geist","Segoe UI",system-ui,sans-serif; --mono:"Geist Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0c0d14; --surface:#13151f; --muted-bg:#1b1e2b; --border:#272a3a; --fg:#f2f2f7; --muted:#9a9cb0;
+  --primary:#8fb8de; --primary-fg:#0c1426; --primary-soft:#1b2740; --accent:#e07a7e; --sky:#8fb8de;
+  --good:#4ade80; --good-bg:#12301f; --warn:#fbbf24; --warn-bg:#3a2a0d; --bad:#f87171; --bad-bg:#3b1517; --info-bg:#14284a; --info:#8fb8de;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c0d14; --surface:#13151f; --muted-bg:#1b1e2b; --border:#272a3a; --fg:#f2f2f7; --muted:#9a9cb0;
+  --primary:#8fb8de; --primary-fg:#0c1426; --primary-soft:#1b2740; --accent:#e07a7e; --sky:#8fb8de;
+  --good:#4ade80; --good-bg:#12301f; --warn:#fbbf24; --warn-bg:#3a2a0d; --bad:#f87171; --bad-bg:#3b1517; --info-bg:#14284a; --info:#8fb8de;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35); color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.5}
+button{font:inherit;color:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.02em;text-wrap:balance}
+p{margin:0}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.ic{flex:none;vertical-align:middle}
+.mono{font-family:var(--mono);font-size:12px;white-space:nowrap}
+.muted{color:var(--muted)}
+
+#app{display:grid;grid-template-columns:276px minmax(0,1fr);height:100%}
+#side{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.brand{display:flex;gap:10px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border)}
+.brand i{width:32px;height:32px;border-radius:9px;background:var(--primary);color:var(--primary-fg);display:grid;place-items:center;font-style:normal;font-weight:700}
+.brand b{display:block;line-height:1.15}.brand small{color:var(--muted);font-size:12px}
+.navwrap{flex:1;overflow:auto;padding:10px 10px 16px}
+.glabel{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:12px 10px 6px}
+.nav{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;border-radius:8px;padding:7px 10px;text-align:left;color:var(--muted)}
+.nav:hover{background:var(--muted-bg);color:var(--fg)}
+.nav.on{background:var(--primary-soft);color:var(--fg);font-weight:600}
+.nav .badge{margin-left:auto}
+.nav.static{opacity:.75}
+.sechd{display:flex;align-items:center;gap:8px;width:100%;border:0;background:transparent;padding:9px 10px 5px;text-align:left;color:var(--fg);font-weight:600;font-size:13px}
+.sechd .ic{transition:transform .15s;color:var(--muted)}
+.sechd[aria-expanded="false"] .ic{transform:rotate(-90deg)}
+.sechd .rel{margin-left:auto}
+.secbody{padding-left:8px;margin-left:12px;border-left:1px solid var(--border)}
+.secbody[hidden]{display:none}
+.rel{font-family:var(--mono);font-size:10.5px;padding:1px 7px;border-radius:99px;border:1px solid var(--border);color:var(--muted);background:var(--surface)}
+.rel.r1{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.sidefoot{border-top:1px solid var(--border);padding:12px 16px;font-size:12px;color:var(--muted)}
+
+#main{display:flex;flex-direction:column;min-width:0;min-height:0}
+#top{display:flex;align-items:center;gap:10px;padding:10px 24px;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap}
+#top .crumb{min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+#top .crumb b{color:var(--fg);font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:6px 12px;font-weight:500}
+.btn:hover{background:var(--muted-bg)}
+.btn.pri{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.btn.pri:hover{filter:brightness(1.1)}
+.btn.sm{padding:4px 9px;font-size:13px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.danger{color:var(--bad)}
+select.btn{padding-right:8px}
+#page{flex:1;overflow:auto;padding:24px;min-width:0}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:20px}
+.ph{display:flex;gap:16px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
+.ph h1{font-size:26px}.ph p{color:var(--muted);margin-top:4px;max-width:72ch}
+.ph .acts{display:flex;gap:8px;flex-wrap:wrap}
+.banner{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border);background:var(--info-bg);color:var(--info);border-radius:10px;padding:10px 14px}
+.banner.warn{background:var(--warn-bg);color:var(--warn)}
+.banner.good{background:var(--good-bg);color:var(--good)}
+.banner.bad{background:var(--bad-bg);color:var(--bad)}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px}
+.card.pad{padding:18px}
+.card h3{font-size:15px}
+.cardhd{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
+.kpi{padding:16px 18px}
+.kpi .l{font-size:12px;color:var(--muted)}
+.kpi .v{font-size:28px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-top:2px}
+.kpi .v.sm{font-size:18px;margin-top:8px;color:var(--muted)}
+.kpi .s{font-size:12px;color:var(--muted);margin-top:2px}
+.kpi.good .v{color:var(--good)}.kpi.warn .v{color:var(--warn)}.kpi.bad .v{color:var(--bad)}
+.cols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px}
+.cols.even{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:1100px){.cols,.cols.even{grid-template-columns:minmax(0,1fr)}}
+
+.chip{display:inline-flex;align-items:center;gap:5px;border-radius:99px;padding:1px 9px;font-size:12px;font-weight:500;background:var(--muted-bg);color:var(--fg);border:1px solid var(--border);white-space:nowrap}
+.chip.req{background:var(--primary-soft);color:var(--primary);border-color:transparent}
+.chip.cap{background:var(--bad-bg);color:var(--bad);border-color:transparent}
+.chip.mil{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+.chip.ele{background:var(--muted-bg);color:var(--muted)}
+.chip.good{background:var(--good-bg);color:var(--good);border-color:transparent}
+.chip.warn{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+.chip.bad{background:var(--bad-bg);color:var(--bad);border-color:transparent}
+.chip.info{background:var(--info-bg);color:var(--info);border-color:transparent}
+.badge{font-family:var(--mono);font-size:10.5px;padding:1px 7px;border-radius:99px;border:1px solid var(--border);color:var(--muted);background:var(--surface)}
+
+table{border-collapse:collapse;width:100%}
+th{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--muted-bg);white-space:nowrap}
+td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:last-child td{border-bottom:0}
+tbody tr.click{cursor:pointer}tbody tr.click:hover{background:var(--muted-bg)}
+.tw{overflow-x:auto}
+.num{font-variant-numeric:tabular-nums;text-align:right}
+
+.plan th,.plan td{padding:8px 10px}
+.plan .first{position:sticky;left:0;background:var(--surface);z-index:1;min-width:230px;border-right:1px solid var(--border)}
+.plan th.first{background:var(--muted-bg)}
+.plan th.tm{text-align:center;min-width:104px}
+.plan th.tm small{display:block;font-weight:500;letter-spacing:0;text-transform:none;margin-top:3px}
+.plan .prog td{background:var(--muted-bg);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 10px}
+.plan td.c{text-align:center;padding:6px}
+.cell{border:1px solid transparent;border-radius:8px;padding:5px 0;min-width:68px;font-variant-numeric:tabular-nums;font-weight:600;background:var(--primary-soft);color:var(--primary)}
+.cell.cap{background:var(--bad-bg);color:var(--bad)}.cell.mil{background:var(--warn-bg);color:var(--warn)}.cell.ele{background:var(--muted-bg);color:var(--muted)}
+.cell.exc{outline:2px solid var(--warn);outline-offset:1px}
+.cell.ovr{outline:2px dashed var(--good);outline-offset:1px}
+.cell.gap{background:var(--bad-bg);color:var(--bad);border:1px dashed var(--bad)}
+.cell:hover{filter:brightness(.96)}
+.cell small{display:block;font-weight:500;font-size:10.5px;opacity:.85}
+.empty{color:var(--border)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);align-items:center}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;background:var(--muted-bg);padding:3px;border-radius:10px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:4px 11px;border-radius:7px;color:var(--muted);font-weight:500}
+.seg button.on{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+.bars{display:grid;gap:10px}
+.bar{display:grid;grid-template-columns:96px minmax(0,1fr) 56px;gap:10px;align-items:center;font-size:13px}
+.track{height:10px;background:var(--muted-bg);border-radius:99px;overflow:hidden;position:relative}
+.fill{height:100%;border-radius:99px;background:var(--primary)}
+.fill.alt{background:var(--sky)}.fill.good{background:var(--good)}.fill.warn{background:var(--warn)}.fill.bad{background:var(--bad)}
+.steps{display:flex;gap:0;flex-wrap:wrap}
+.step{display:flex;align-items:center;gap:8px;padding:6px 14px 6px 8px;font-size:13px;color:var(--muted);position:relative}
+.step b{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--border);font-size:12px;background:var(--surface)}
+.step.done b{background:var(--good-bg);color:var(--good);border-color:transparent}
+.step.now b{background:var(--primary);color:var(--primary-fg);border-color:transparent}
+.step.now{color:var(--fg);font-weight:600}
+.step:not(:last-child)::after{content:"";width:22px;height:1px;background:var(--border);margin-left:6px}
+
+.field{display:grid;gap:6px;margin-bottom:12px}
+.field label{font-size:13px;font-weight:500}
+.inp{width:100%;border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:8px 10px}
+textarea.inp{min-height:84px;resize:vertical}
+.slider{width:100%;accent-color:var(--primary)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.toggle{border:1px solid var(--border);background:var(--surface);border-radius:99px;padding:4px 13px;color:var(--muted)}
+.toggle.on{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.stepper{display:inline-flex;align-items:center;gap:6px}
+.stepper button{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:var(--surface);font-weight:600}
+.stepper button[disabled]{opacity:.35;cursor:not-allowed}
+.stepper b{min-width:22px;text-align:center;font-variant-numeric:tabular-nums}
+
+#scrim{position:fixed;inset:0;background:rgba(5,5,15,.45);z-index:30}
+#sheet{position:fixed;top:0;right:0;bottom:0;width:min(540px,100%);background:var(--surface);border-left:1px solid var(--border);z-index:31;display:flex;flex-direction:column;box-shadow:var(--shadow)}
+#sheet .hd{display:flex;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border)}
+#sheet .bd{flex:1;overflow:auto;padding:18px;display:grid;gap:16px;align-content:start}
+#sheet .ft{padding:14px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+#modal{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:16px;background:rgba(5,5,15,.5)}
+#modal .box{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:min(520px,100%);max-height:90%;overflow:auto;padding:20px;box-shadow:var(--shadow)}
+#ask{position:fixed;top:0;right:0;bottom:0;width:min(450px,100%);background:var(--surface);border-left:1px solid var(--border);z-index:35;display:flex;flex-direction:column;box-shadow:var(--shadow)}
+#ask .hd{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border)}
+#ask .msgs{flex:1;overflow:auto;padding:16px;display:grid;gap:14px;align-content:start}
+.m{max-width:94%}
+.m.u{justify-self:end;background:var(--primary);color:var(--primary-fg);padding:8px 12px;border-radius:14px 14px 4px 14px}
+.m.a{display:grid;gap:8px}
+.tool{display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-family:var(--mono);font-size:11.5px;color:var(--muted);background:var(--muted-bg);flex-wrap:wrap}
+.contract{display:grid;gap:3px;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;background:var(--surface)}
+.contract div{display:flex;gap:8px}.contract span:first-child{color:var(--muted);min-width:104px}
+.prov{display:flex;gap:6px;flex-wrap:wrap}
+.askfoot{border-top:1px solid var(--border);padding:12px 14px;display:grid;gap:10px}
+.sugs{display:flex;gap:6px;flex-wrap:wrap}
+.sugs button{border:1px solid var(--border);background:var(--surface);border-radius:99px;padding:3px 10px;font-size:12.5px;color:var(--muted)}
+.sugs button:hover{color:var(--fg);background:var(--muted-bg)}
+.askrow{display:flex;gap:8px}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:10px;z-index:60;box-shadow:var(--shadow);max-width:90%}
+.trace{display:grid;gap:10px}
+.tr{display:grid;grid-template-columns:22px minmax(0,1fr);gap:10px}
+.tr .dot{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700}
+.tr .dot.ok{background:var(--good-bg);color:var(--good)}.tr .dot.no{background:var(--bad-bg);color:var(--bad)}.tr .dot.warn{background:var(--warn-bg);color:var(--warn)}.tr .dot.na{background:var(--muted-bg);color:var(--muted)}
+.kv{display:grid;gap:8px}.kv div{display:flex;justify-content:space-between;gap:16px}.kv span:first-child{color:var(--muted)}
+.planned{display:grid;gap:12px}
+.planned ul{margin:0;padding-left:18px;color:var(--muted)}
+.lock{display:inline-flex;gap:6px;align-items:center}
+.menu-toggle{display:none}
+@media (max-width:900px){
+  #app{grid-template-columns:minmax(0,1fr)}
+  #side{position:fixed;inset:0 auto 0 0;width:min(300px,86%);z-index:25;transform:translateX(-100%);transition:transform .2s}
+  #side.open{transform:none}
+  .menu-toggle{display:inline-flex}
+  #page{padding:16px}
+  #top{padding:10px 16px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div id="app">
+  <aside id="side" aria-label="Navigation"></aside>
+  <div id="main">
+    <header id="top"></header>
+    <main id="page"></main>
+  </div>
+</div>
+<div id="layer"></div>
+<div id="toast" hidden></div>
+
+<script>
+/* ---------- icons ---------- */
+const ICONS={
+ home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
+ users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.5a3.5 3.5 0 010 7M18 14c2.2.6 3.5 2.4 3.5 6"/>',
+ cal:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+ hist:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+ grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+ chart:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+ rules:'<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9"/>',
+ book:'<path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2V5z"/><path d="M4 21h15"/>',
+ flask:'<path d="M9 3h6M10 3v6l-5.5 9.5A2 2 0 006.2 21h11.6a2 2 0 001.7-2.5L14 9V3"/>',
+ alert:'<path d="M12 3l10 18H2L12 3z"/><path d="M12 10v5M12 18h.01"/>',
+ check:'<path d="M5 12l5 5 9-10"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+ building:'<path d="M4 21V5l8-2v18M12 9h8v12M4 21h16M8 8h.01M8 12h.01M8 16h.01M16 13h.01M16 17h.01"/>',
+ upload:'<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>',
+ plug:'<path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 01-12 0V8zM12 18v4"/>',
+ shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/>',
+ cog:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
+ spark:'<path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z"/>',
+ chev:'<path d="M6 9l6 6 6-6"/>',
+ x:'<path d="M6 6l12 12M18 6L6 18"/>',
+ down:'<path d="M12 4v12M7 11l5 5 5-5M4 20h16"/>',
+ lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>',
+ trend:'<path d="M3 17l6-6 4 4 8-9"/>',
+ door:'<path d="M6 21V4a1 1 0 011-1h10a1 1 0 011 1v17M4 21h16M15 12h.01"/>',
+ file:'<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z"/><path d="M14 3v5h5"/>',
+ list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+ target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>',
+ menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
+ sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/>',
+ route:'<circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h6a4 4 0 000-8h-4a4 4 0 010-8h6"/>',
+ layers:'<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>',
+ pen:'<path d="M4 20l4-1 11-11-3-3L5 16l-1 4z"/>'
+};
+const ic=(n,s=16)=>`<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg>`;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $=(s,el=document)=>el.querySelector(s);
+
+/* ---------- synthetic data ---------- */
+const SLOT={FE:'Fall Even',SO:'Spring Odd',FO:'Fall Odd',SE:'Spring Even'};
+const TERMS=[
+ {id:'F26',label:'Fall 2026',slot:'FE',dates:'Aug 24 to Dec 18, 2026'},{id:'S27',label:'Spring 2027',slot:'SO',dates:'Jan 11 to May 7, 2027'},{id:'F27',label:'Fall 2027',slot:'FO',dates:'Aug 23 to Dec 17, 2027'},{id:'S28',label:'Spring 2028',slot:'SE',dates:'Jan 10 to May 5, 2028'},
+ {id:'F28',label:'Fall 2028',slot:'FE',dates:'Aug 21 to Dec 15, 2028'},{id:'S29',label:'Spring 2029',slot:'SO',dates:'Jan 8 to May 4, 2029'},{id:'F29',label:'Fall 2029',slot:'FO',dates:'Aug 20 to Dec 14, 2029'},{id:'S30',label:'Spring 2030',slot:'SE',dates:'Jan 7 to May 3, 2030'}];
+const PROGS={BUS:'Business',BIO:'Biology',EDU:'Education',PSY:'Psychology'};
+const ALL=['FE','SO','FO','SE'];
+const CAP=30;
+const C=(code,title,type,slots,secs,pre,hist)=>({code,title,type,slots,secs,pre:pre||'',prog:code.slice(0,3),hist:hist||[secs*14,secs*13,secs*15,secs*14]});
+const COURSES=[
+ C('BUS-101','Introduction to Business','required',ALL,3,'',[78,80,82,81]),
+ C('BUS-210','Financial Accounting','required',['FE','FO'],2),
+ C('BUS-220','Managerial Accounting','required',['SO','SE'],2,'BUS-210'),
+ C('BUS-310','Principles of Marketing','required',['FO','SE'],2,'BUS-101'),
+ C('BUS-340','Business Analytics','elective',['FO'],1,'BUS-101'),
+ C('BUS-355','Operations Management','milestone',['FE'],1,'BUS-220'),
+ C('BUS-410','Strategic Management','milestone',['SO'],1,'BUS-310'),
+ C('BUS-490','Business Capstone','capstone',['SE'],1,'BUS-410'),
+ C('BIO-101','General Biology','required',ALL,4,'',[112,108,110,118]),
+ C('BIO-210','Genetics','required',['FO','SE'],2,'BIO-101'),
+ C('BIO-330','Ecology','elective',['FE'],1,'BIO-101'),
+ C('BIO-420','Molecular Biology','milestone',['SO'],1,'BIO-210'),
+ C('BIO-490','Senior Research','capstone',['SE'],1,'BIO-420'),
+ C('EDU-110','Foundations of Education','required',['FE','SO'],2,'',[54,52,56,57]),
+ C('EDU-250','Educational Psychology','required',['FO','SO'],2,'EDU-110'),
+ C('EDU-340','Teaching Methods','milestone',['FE','SE'],1,'EDU-250'),
+ C('EDU-480','Student Teaching','capstone',['SO'],1,'EDU-340'),
+ C('PSY-101','General Psychology','required',ALL,3,'',[78,80,82,84]),
+ C('PSY-220','Research Methods','required',['FE','SO'],2,'PSY-101'),
+ C('PSY-340','Abnormal Psychology','elective',['FO'],1,'PSY-101'),
+ C('PSY-490','Capstone Seminar','capstone',['FO'],1,'PSY-220')];
+const TYPE={required:['Required','req'],capstone:['Capstone','cap'],milestone:['Milestone','mil'],elective:['Elective','ele']};
+const byCode=c=>COURSES.find(x=>x.code===c);
+const FALL=COURSES.filter(c=>c.slots.includes('FE'));
+const minSecs=c=>c.type==='elective'?0:1;
+
+const RULES=[
+ {id:'R-001',cls:'Hard academic',text:'Required courses are offered at least once every academic year.',scope:'All required courses',status:'Active',res:[62,0,106,0],waivable:false},
+ {id:'R-002',cls:'Hard academic',text:'Capstone courses are offered only in their designated rotation slot, every cycle.',scope:'All capstone courses',status:'Active',res:[31,0,137,0],waivable:false},
+ {id:'R-003',cls:'Hard academic',text:'Milestone courses appear in every cycle in their designated slot.',scope:'All milestone courses',status:'Active',res:[28,0,140,0],waivable:true},
+ {id:'R-004',cls:'Hard academic',text:'A prerequisite is offered in the same or an earlier term than the course that needs it.',scope:'All courses with prerequisites',status:'Active',res:[96,0,72,0],waivable:true},
+ {id:'R-005',cls:'Hard academic',text:'No required course goes more than two consecutive terms without an offering.',scope:'All required courses',status:'Active',res:[62,0,106,0],waivable:false},
+ {id:'R-006',cls:'Soft academic',text:'Electives prefer fall terms.',scope:'All electives',status:'Active',weight:3,res:[22,2,144,0]},
+ {id:'R-007',cls:'Soft academic',text:'Keep a course in the same rotation slot as the last cycle.',scope:'All courses',status:'Active',weight:5,res:[160,3,5,0]},
+ {id:'R-008',cls:'Soft academic',text:'Spread sections evenly across the four rotation slots.',scope:'All programs',status:'Active',weight:2,res:[4,0,0,0]},
+ {id:'R-009',cls:'Soft academic',text:'Flag a section when projected enrollment is below 10.',scope:'All sections',status:'Active',weight:4,res:[41,0,0,127]},
+ {id:'R-010',cls:'Hard operational',text:'An instructor cannot teach two sections at the same time.',scope:'Release 2',status:'Planned',res:null},
+ {id:'R-011',cls:'Economic',text:'Prefer full-time faculty over adjuncts when qualified and available.',scope:'Release 2',status:'Planned',weight:4,res:null}];
+const rule=id=>RULES.find(r=>r.id===id);
+const isHard=id=>(rule(id)?.cls||'').startsWith('Hard');
+
+let EXC=[
+ {id:'E-101',code:'BUS-355',term:'S28',kind:'add',sev:'High',rule:'R-003',status:'Open',by:'Tactician',reason:'Fourteen seniors would miss graduation if the course is only offered in Fall Even.',decided:''},
+ {id:'E-102',code:'PSY-340',term:'S29',kind:'move',from:'F29',sev:'Medium',rule:'R-006',status:'Open',by:'Tactician',reason:'Move out of Fall Odd to balance sections against PSY-490.',decided:''},
+ {id:'E-103',code:'BIO-330',term:'F27',kind:'add',sev:'Low',rule:'R-007',status:'Open',by:'Strategist',reason:'Extra offering for the nursing prerequisite cohort.',decided:''},
+ {id:'E-104',code:'EDU-480',term:'S29',kind:'gap',sev:'Blocking',rule:'R-002',status:'Open',by:'Validator',reason:'Student Teaching has 0 sections in Spring 2029 because a count was set to 0. Capstones cannot be dropped.',decided:''}];
+
+const metrics=(counts,target,rest)=>{
+  const sampleBase=FALL.reduce((a,c)=>a+c.secs,0),sampleNow=FALL.reduce((a,c)=>a+(counts[c.code]??c.secs),0);
+  const planned=220-rest-(sampleBase-sampleNow),tgt=Math.round(220*(1-target/100));
+  const flags=[];
+  FALL.forEach(c=>{const n=counts[c.code]??c.secs;
+    if(n<minSecs(c))flags.push(`${c.code}: below the minimum of ${minSecs(c)} section`);
+    if(n>c.secs+1)flags.push(`${c.code}: above the maximum of ${c.secs+1} sections`);
+    else if(n>0&&n<c.secs&&n*CAP<c.hist[3])flags.push(`${c.code}: ${n} section${n>1?'s':''} seat ${n*CAP}, last Fall enrolled ${c.hist[3]} (short by ${c.hist[3]-n*CAP})`)});
+  const reqRed=FALL.filter(c=>c.type==='required'&&(counts[c.code]??c.secs)<c.secs).length;
+  return {planned,tgt,gap:planned-tgt,reqRed,flags,target};
+};
+const baseCounts=()=>Object.fromEntries(FALL.map(c=>[c.code,c.secs]));
+const state={page:'overview',role:'Strategist',closed:{},filters:{prog:'All',type:'All',status:'All'},plan:'Draft',stale:'',
+ scn:{name:'Working draft',target:10,rest:12,counts:{...baseCounts(),'BIO-330':0,'BUS-101':2}},
+ scenarios:[
+  {id:'S-001',name:'Baseline v1',target:0,rest:0,counts:baseCounts(),by:'Imported',when:'22 Sep',status:'Baseline (immutable)'},
+  {id:'S-002',name:'10% target',target:10,rest:12,counts:{...baseCounts(),'BIO-330':0,'BUS-101':2},by:'Tactician',when:'29 Sep',status:'Saved'},
+  {id:'S-003',name:'15% target',target:15,rest:20,counts:{...baseCounts(),'BIO-330':0,'BUS-101':2,'PSY-101':2,'BIO-101':3,'EDU-110':1,'BUS-210':1},by:'Tactician',when:'29 Sep',status:'Saved'}],
+ rulesExtra:[],ask:false,side:false,chat:[],
+ audit:[
+  {t:'Today 09:12',who:'Tactician',what:'Requested waiver E-101 (BUS-355, Spring 2028)',tag:'Waiver'},
+  {t:'Today 08:40',who:'Validator',what:'Found blocking failure E-104: EDU-480 has no Spring 2029 section',tag:'Validation'},
+  {t:'Yesterday 16:05',who:'Strategist',what:'Edited rule R-007 weight from 4 to 5',tag:'Rule'},
+  {t:'Yesterday 11:30',who:'Importer',what:'Imported 257 rows from Fall_2026_Course_Schedule_Uploaded_SLIS_Data.xlsx, 0 dropped',tag:'Import'}]};
+
+const ROLES=['Strategist','Tactician','Chair / Dean','Registrar','Administrator','Read only'];
+const SCOPED=['Tactician','Chair / Dean'];
+const inScope=p=>!SCOPED.includes(state.role)||p==='BUS';
+const can=a=>({editRules:['Strategist'],editCounts:['Strategist','Tactician'],request:['Strategist','Tactician'],decide:['Strategist','Chair / Dean'],submit:['Strategist','Tactician'],approve:['Chair / Dean'],requestChanges:['Chair / Dean','Registrar'],exportOfficial:['Registrar'],exportDraft:['Strategist','Tactician','Chair / Dean','Registrar','Administrator']}[a]||[]).includes(state.role);
+const openCount=()=>EXC.filter(e=>e.status==='Open').length;
+const openGaps=()=>EXC.filter(e=>e.kind==='gap'&&e.status==='Open');
+const planHash=()=>{const s=JSON.stringify([EXC.map(e=>[e.id,e.status]),state.scn.counts,state.scn.target,state.rulesExtra.map(r=>r.id)]);let h=5381;for(const ch of s)h=((h<<5)+h+ch.charCodeAt(0))>>>0;return h.toString(16).padStart(8,'0')};
+function audit(who,what,tag){state.audit.unshift({t:'Just now',who,what,tag})}
+function touch(who,what,tag){const was=state.plan;audit(who,what,tag);if(['Submitted','Approved'].includes(was)){state.plan='Draft';state.stale=`${what}. The content has a new hash, so the earlier ${was==='Approved'?'approval':'submission'} no longer applies and it needs a new review.`}}
+
+function placement(code,termId){
+  const c=byCode(code),t=TERMS.find(x=>x.id===termId);
+  let secs=c.slots.includes(t.slot)?c.secs:0,flag=null,ex=null;
+  for(const e of EXC){
+    if(e.code!==code)continue;
+    if(e.kind==='move'&&e.from===termId&&(e.status==='Open'||e.status==='Approved'))secs=0;
+    if(e.kind==='gap'&&e.term===termId&&e.status==='Open'){secs=0;flag='gap';ex=e}
+    if(e.kind!=='gap'&&e.term===termId){
+      if(e.status==='Open'){secs=Math.max(secs,1);flag='exc';ex=e}
+      else if(e.status==='Approved'){secs=Math.max(secs,1);flag='ovr';ex=e}
+    }
+  }
+  return {secs,flag,ex};
+}
+
+/* ---------- navigation ---------- */
+const NAV=[
+ {label:'Planning',rel:'R1',items:[['overview','Overview','chart'],['plan','Academic Plan','grid'],['scenarios','Scenarios','flask'],['rules','Rules','rules'],['exceptions','Exceptions','alert'],['approvals','Approvals','check'],['courses','Curriculum','book']]},
+ {label:'Scheduling',rel:'R2',items:[['schedules','Schedules','cal'],['faculty','Faculty','users'],['spaces','Spaces','building'],['patterns','Meeting Patterns','clock'],['objectives','Objectives & Cost','target']]},
+ {label:'Students',rel:'R3',items:[['demand','Demand & Requests','trend'],['conflicts','Conflicts','alert'],['pathways','Pathways','route']]},
+ {label:'Insights',rel:'R4',items:[['registration','Registration Monitor','chart'],['planvsactual','Plan vs Actual','list'],['forecast','Forecast','trend'],['utilization','Utilization','building']]},
+ {label:'Campus',rel:'R5',items:[['exams','Exams','file'],['events','Events & Shared Space','cal']]},
+ {label:'Settings',rel:'',items:[['calendar','Calendar & Terms','cal'],['roles','Roles & Approvals','users'],['imports','Imports & Reconciliation','upload'],['integrations','Integrations','plug'],['audit','Audit Log','shield'],['readiness','Replacement Readiness','check']]}];
+const META={};NAV.forEach(s=>s.items.forEach(([id,t])=>META[id]={title:t,sec:s.label,rel:s.rel}));
+
+function renderSide(){
+  const top=[['Home','home'],['Workers','users'],['Bookings','cal'],['History','hist']].map(([t,i])=>`<button class="nav static" data-act="portal" data-t="${t}">${ic(i)}<span>${t}</span></button>`).join('');
+  const secs=NAV.map(s=>{const cl=state.closed[s.label];return `<div>
+    <button class="sechd" aria-expanded="${!cl}" data-act="sec" data-s="${s.label}">${ic('chev',14)}<span>${s.label}</span>${s.rel?`<span class="rel ${s.rel==='R1'?'r1':''}">${s.rel}</span>`:''}</button>
+    <div class="secbody" ${cl?'hidden':''}>${s.items.map(([id,t,i])=>`<button class="nav ${state.page===id?'on':''}" data-act="go" data-p="${id}">${ic(i)}<span>${t}</span>${id==='exceptions'&&openCount()?`<span class="badge">${openCount()}</span>`:''}</button>`).join('')}</div></div>`}).join('');
+  $('#side').innerHTML=`<div class="brand"><i>A</i><div><b>Ask Digi</b><small>Newman University</small></div></div>
+   <div class="navwrap"><div class="glabel">Platform</div>${top}<div class="glabel" style="display:flex;justify-content:space-between">Academics <span class="rel">Staff only</span></div>${secs}</div>
+   <div class="sidefoot">${ic('shield',14)} Synthetic sample data. Nothing here is Newman's records.</div>`;
+  $('#side').classList.toggle('open',state.side);
+}
+function renderTop(){
+  const m=META[state.page];
+  const scope=SCOPED.includes(state.role)?'Scope: Business':'Scope: institution';
+  $('#top').innerHTML=`<button class="btn sm menu-toggle" data-act="menu" aria-label="Menu">${ic('menu')}</button>
+   <div class="crumb">Academics / ${m.sec} / <b>${m.title}</b></div>
+   <span class="chip">Data as of 22 Sep 14:10</span>
+   <span class="chip ${state.plan==='Draft'?'info':state.plan==='Submitted'?'warn':'good'}">Plan v2 · ${state.plan} · <span class="mono">${planHash()}</span></span>
+   <select class="btn sm" id="role" aria-label="Viewing as">${ROLES.map(r=>`<option>${r}</option>`).join('')}</select><span class="muted" style="font-size:12px">${scope}</span>
+   <button class="btn pri sm" data-act="ask">${ic('spark')} Ask Digi</button>
+   <button class="btn sm" data-act="theme" aria-label="Theme">${ic('sun')}</button>`;
+  $('#role').value=state.role;
+}
+const head=(t,p,acts='')=>`<div class="ph"><div><h1>${t}</h1><p>${p}</p></div><div class="acts">${acts}</div></div>`;
+const staleBanner=()=>state.stale?`<div class="banner warn">${ic('alert')}<span><b>Approval invalidated.</b> ${esc(state.stale)}</span><button class="btn sm" data-act="dismiss-stale" style="margin-left:auto">Dismiss</button></div>`:'';
+const stateSteps=()=>{const S=['Draft','Submitted','Approved','Exported'],cur=S.indexOf(state.plan);return `<div class="steps">${S.map((x,i)=>`<div class="step ${i<cur?'done':i===cur?'now':''}"><b>${i<cur?'✓':i+1}</b>${x}</div>`).join('')}</div>`};
+
+/* ---------- pages ---------- */
+const PAGES={};
+PAGES.overview=()=>{
+  const oc=openCount(),gaps=openGaps().length,total=168,comp=((total-gaps)/total*100).toFixed(1).replace('.0','');
+  const m=metrics(state.scn.counts,state.scn.target,state.scn.rest);
+  return `<div class="wrap">${head('Academic planning overview','Is the rotation trusted, and what needs a decision? Four programs shown from a synthetic institution of 11.',`<button class="btn" data-act="go" data-p="plan">Open the plan</button><button class="btn pri" data-act="go" data-p="approvals">Go to approvals</button>`)}
+   ${staleBanner()}
+   <div class="card pad">${stateSteps()}</div>
+   <div class="kpis">
+    <div class="card kpi ${gaps?'bad':'good'}"><div class="l">Hard-rule compliance</div><div class="v">${comp}%</div><div class="s">${gaps?`${gaps} blocking failure, plan cannot be submitted`:'0 failures across 8 terms'}</div></div>
+    <div class="card kpi ${gaps?'warn':'good'}"><div class="l">Capstones protected</div><div class="v">${8-gaps} / 8</div><div class="s">${gaps?'EDU-480 Spring 2029 is missing':'All in their rotation slot'}</div></div>
+    <div class="card kpi good"><div class="l">Required courses covered</div><div class="v">42 / 42</div><div class="s">Every cycle</div></div>
+    <div class="card kpi ${oc?'warn':'good'}"><div class="l">Items waiting for a decision</div><div class="v">${oc}</div><div class="s">${oc?'Waivers, acknowledgements, blocking':'All decided'}</div></div>
+    <div class="card kpi"><div class="l">Checks with insufficient data</div><div class="v">127</div><div class="s">No enrollment projection beyond Fall 2027. Not counted as passes.</div></div>
+   </div>
+   <div class="banner">${ic('shield')}<span><b>What this plan cannot prove.</b> Pathway coverage is checked against configured cohort sequences and known prerequisite timing. Release 1 cannot show that every individual student can graduate, because student progress, equivalencies and transfer credit are not loaded.</span></div>
+   <div class="cols">
+    <div class="card"><div class="cardhd"><h3>Rotation cycle</h3><span class="muted">Two cycles shown. Slots repeat every two years and come from each term's calendar year.</span></div>
+     <div style="padding:18px;display:grid;gap:14px">
+      ${Object.keys(SLOT).map(k=>{const n=TERMS.filter(t=>t.slot===k).map(t=>t.label).join(' · ');const tot=COURSES.reduce((a,c)=>a+(c.slots.includes(k)?c.secs:0),0);return `<div class="bar"><span><b>${SLOT[k]}</b></span><div class="track"><div class="fill" style="width:${tot/36*100}%"></div></div><span class="num">${tot}</span></div><div class="muted" style="margin:-8px 0 0 106px;font-size:12px">${n}</div>`}).join('')}
+      <div class="muted" style="font-size:12px">Sections per slot for the four sample programs.</div></div></div>
+    <div class="card"><div class="cardhd"><h3>Section plan, Fall 2026</h3><span class="chip info">Advisory target ${m.target}%</span></div>
+     <div style="padding:18px;display:grid;gap:12px"><div class="kv"><div><span>Baseline v1</span><b>220 sections</b></div><div><span>Target</span><b>${m.tgt} sections</b></div><div><span>Planned now</span><b>${m.planned} sections</b></div><div><span>Above target by</span><b>${Math.max(0,m.gap)}</b></div></div>
+      <div class="muted" style="font-size:12px">Counts are set by tacticians. No solver chooses them in Release 1.</div>
+      <button class="btn" data-act="go" data-p="scenarios">Open scenarios</button></div></div>
+   </div>
+   <div class="card"><div class="cardhd"><h3>Needs a decision</h3><button class="btn sm" data-act="go" data-p="exceptions">Open exceptions</button></div>
+    <div class="tw"><table><tbody>${EXC.filter(e=>e.status==='Open').map(e=>`<tr class="click" data-act="exc" data-id="${e.id}"><td><span class="mono">${e.id}</span></td><td><b>${e.code}</b> ${esc(byCode(e.code).title)}</td><td>${TERMS.find(t=>t.id===e.term).label}</td><td><span class="chip ${e.kind==='gap'?'bad':e.sev==='High'?'warn':''}">${e.sev}</span></td><td class="muted">${esc(e.reason)}</td></tr>`).join('')||'<tr><td class="muted">Nothing is waiting. The plan can be submitted.</td></tr>'}</tbody></table></div></div>
+  </div>`;
+};
+
+PAGES.plan=()=>{
+  const f=state.filters;
+  const list=COURSES.filter(c=>(f.prog==='All'||c.prog===f.prog)&&(f.type==='All'||c.type===f.type)&&(f.status==='All'||(f.status==='open'&&TERMS.some(t=>['exc','gap'].includes(placement(c.code,t.id).flag)))||(f.status==='ovr'&&TERMS.some(t=>placement(c.code,t.id).flag==='ovr'))));
+  let rows='',last='';
+  list.forEach(c=>{
+    if(c.prog!==last){last=c.prog;rows+=`<tr class="prog"><td colspan="9">${PROGS[c.prog]} <span style="font-weight:400;text-transform:none;letter-spacing:0">· ${COURSES.filter(x=>x.prog===c.prog).length} courses</span></td></tr>`}
+    rows+=`<tr><td class="first"><div class="mono">${c.code}</div><div>${esc(c.title)}</div><div style="margin-top:4px"><span class="chip ${TYPE[c.type][1]}">${TYPE[c.type][0]}</span></div></td>${TERMS.map(t=>{const p=placement(c.code,t.id);
+      if(p.flag==='gap')return `<td class="c"><button class="cell gap" data-act="cell" data-c="${c.code}" data-t="${t.id}" aria-label="${c.code} ${t.label}, missing required offering">0<small>missing</small></button></td>`;
+      return `<td class="c">${p.secs?`<button class="cell ${c.type==='capstone'?'cap':c.type==='milestone'?'mil':c.type==='elective'?'ele':''} ${p.flag||''}" data-act="cell" data-c="${c.code}" data-t="${t.id}" aria-label="${c.code} ${t.label}, ${p.secs} sections">${p.secs}<small>${p.secs>1?'sections':'section'}</small></button>`:`<span class="empty">·</span>`}</td>`}).join('')}</tr>`;
+  });
+  const tot=TERMS.map(t=>list.reduce((a,c)=>a+placement(c.code,t.id).secs,0));
+  return `<div class="wrap">${head('Academic plan','Eight terms across two rotation cycles. Select any cell to see why it is there, its capacity, the rules that apply and its change history.',`<button class="btn" data-act="export-draft" ${can('exportDraft')?'':'disabled'}>${ic('down')} Export draft CSV</button><button class="btn pri" data-act="validate">${ic('check')} Validate plan</button>`)}
+   ${staleBanner()}
+   <div class="filters"><div class="seg" role="group" aria-label="Department">${['All',...Object.keys(PROGS)].map(p=>`<button class="${f.prog===p?'on':''}" data-act="fprog" data-v="${p}">${p==='All'?'All departments':PROGS[p]}</button>`).join('')}</div>
+    <div class="seg" role="group" aria-label="Type">${['All','required','capstone','milestone','elective'].map(p=>`<button class="${f.type===p?'on':''}" data-act="ftype" data-v="${p}">${p==='All'?'All types':TYPE[p][0]}</button>`).join('')}</div>
+    <div class="seg" role="group" aria-label="Status">${[['All','Any status'],['open','Needs a decision'],['ovr','Approved overrides']].map(([v,l])=>`<button class="${f.status===v?'on':''}" data-act="fstatus" data-v="${v}">${l}</button>`).join('')}</div></div>
+   <div class="card"><div class="tw"><table class="plan"><thead><tr><th class="first">Course</th>${TERMS.map(t=>`<th class="tm">${t.label}<small><span class="chip ${t.slot==='FE'||t.slot==='FO'?'info':''}">${SLOT[t.slot]}</span></small></th>`).join('')}</tr></thead><tbody>${rows||'<tr><td colspan="9" class="muted">No courses match these filters.</td></tr>'}</tbody>
+   <tfoot><tr><td class="first" style="font-weight:600">Sections shown</td>${tot.map(n=>`<td class="c num" style="text-align:center;font-weight:600">${n}</td>`).join('')}</tr></tfoot></table></div></div>
+   <div class="legend"><span><span class="chip req">Required</span></span><span><span class="chip cap">Capstone</span></span><span><span class="chip mil">Milestone</span></span><span><span class="chip ele">Elective</span></span><span style="display:inline-flex;gap:6px;align-items:center"><span class="cell exc" style="min-width:20px;padding:0 6px">1</span> waiting for a decision</span><span style="display:inline-flex;gap:6px;align-items:center"><span class="cell ovr" style="min-width:20px;padding:0 6px">1</span> approved</span><span style="display:inline-flex;gap:6px;align-items:center"><span class="cell gap" style="min-width:20px;padding:0 6px">0</span> blocking, required offering missing</span></div>
+   <div class="banner">${ic('shield')}<span>Pathway coverage is checked against configured cohort sequences only. It does not prove every individual student can graduate.</span></div></div>`;
+};
+
+PAGES.rules=()=>{
+  const all=[...RULES,...state.rulesExtra],gap=openGaps().length;
+  const resCell=r=>{if(!r.res)return '<td class="muted">Release 2</td>';const v=[...r.res];if(r.id==='R-002'){v[1]=gap;v[0]=31-gap}return `<td style="white-space:nowrap"><span class="chip good">${v[0]} pass</span> ${v[1]?`<span class="chip bad">${v[1]} fail</span>`:''} <span class="chip">${v[2]} n/a</span> ${v[3]?`<span class="chip warn">${v[3]} no data</span>`:''}</td>`};
+  return `<div class="wrap">${head('Rules','One rule set drives validation and every explanation. Rules are named, versioned data with a scope, severity and waiver policy. No one writes code or SQL to add one.',`<button class="btn pri" data-act="newrule" ${can('editRules')?'':'disabled title="Strategists propose rules"'}>${ic('pen')} New rule</button>`)}
+   ${!can('editRules')?`<div class="banner">${ic('lock')}<span>You are viewing as ${state.role}. Only a Strategist proposes rules.</span></div>`:''}
+   <div class="card"><div class="tw"><table><thead><tr><th>Rule</th><th>Class</th><th>What it says</th><th>Waiver</th><th>Weight</th><th>Results on this plan</th></tr></thead><tbody>${all.map(r=>`<tr><td><span class="mono">${r.id}</span><div><span class="chip ${r.status==='Active'?'good':''}">${r.status}</span></div></td><td><span class="chip ${r.cls.startsWith('Hard')?'bad':r.cls==='Economic'?'warn':'info'}">${r.cls}</span></td><td>${esc(r.text)}<div class="muted" style="font-size:12px">${esc(r.scope)}</div></td><td>${r.cls.startsWith('Hard')?(r.waivable?'<span class="chip warn">Waivable with expiry</span>':'<span class="chip bad">Cannot be waived</span>'):'<span class="muted">Acknowledge</span>'}</td><td class="num">${r.weight??'Hard'}</td>${resCell(r)}</tr>`).join('')}</tbody></table></div></div>
+   <div class="banner">${ic('shield')}<span>Every check returns one of four results: pass, fail, not applicable, or <b>insufficient data</b>. Missing information is never shown as a pass. Hard rules cannot be broken unless the rule allows a waiver, and a waiver names the rule, the exact scope, an expiry and a separate approver.</span></div></div>`;
+};
+
+PAGES.courses=()=>`<div class="wrap">${head('Curriculum','The catalog and program versions the plan is built from: type, rotation slots, prerequisites and recent enrollment.',`<button class="btn" data-act="go" data-p="imports">${ic('upload')} Import catalog</button>`)}
+  <div class="card"><div class="tw"><table><thead><tr><th>Code</th><th>Title</th><th>Type</th><th>Rotation slots</th><th>Prerequisite</th><th>Sections per term</th><th>Last 4 terms (enrollment)</th></tr></thead><tbody>${COURSES.map(c=>`<tr class="click" data-act="course" data-c="${c.code}"><td><span class="mono">${c.code}</span></td><td>${esc(c.title)}</td><td><span class="chip ${TYPE[c.type][1]}">${TYPE[c.type][0]}</span></td><td>${c.slots.length===4?'Every term':c.slots.map(s=>SLOT[s]).join(', ')}</td><td class="mono">${c.pre||'None'}</td><td class="num">${c.secs}</td><td class="muted num">${c.hist.join(' · ')}</td></tr>`).join('')}</tbody></table></div></div></div>`;
+
+PAGES.scenarios=()=>{
+  const s=state.scn,m=metrics(s.counts,s.target,s.rest);
+  const edit=can('editCounts');
+  return `<div class="wrap">${head('Scenarios','Compare a named baseline against what-ifs. In Release 1 a tactician sets the section counts and the reduction is an advisory target. Nothing is chosen for you, and a target is never assumed to be achievable.',`<button class="btn" data-act="save-scen">Save scenario</button><button class="btn" disabled title="Release 2">${ic('lock',14)} Propose counts (R2)</button>`)}
+   ${staleBanner()}
+   <div class="banner">${ic('shield')}<span>Baseline <b>v1</b> (imported 22 Sep, data as of 22 Sep 14:10, rule set 2026.1). A scenario cannot change its baseline. Figures not available yet show as <b>unavailable</b>, never as zero.</span></div>
+   <div class="cols">
+    <div class="card pad"><h3>Fall 2026 target</h3>
+      <div class="field" style="margin-top:14px"><label for="red">Advisory reduction target: <b id="redv">${s.target}%</b> of the 220-section baseline, rounded to the nearest section</label><input id="red" class="slider" type="range" min="0" max="20" step="1" value="${s.target}"></div>
+      <div class="kpis" style="margin-top:12px">
+       <div class="card kpi"><div class="l">Target</div><div class="v">${m.tgt}</div><div class="s">sections</div></div>
+       <div class="card kpi ${m.gap>0?'warn':'good'}"><div class="l">Planned now</div><div class="v">${m.planned}</div><div class="s">${m.gap>0?`${m.gap} above target`:m.gap<0?`${-m.gap} below target`:'On target'}</div></div>
+       <div class="card kpi ${m.flags.length>4?'bad':m.flags.length?'warn':'good'}"><div class="l">Risk flags</div><div class="v">${m.flags.length}</div><div class="s">Coverage and capacity checks</div></div>
+       <div class="card kpi"><div class="l">Required courses reduced</div><div class="v">${m.reqRed}</div><div class="s">42 / 42 still offered</div></div>
+       <div class="card kpi"><div class="l">Unmet demand</div><div class="v sm lock">${ic('lock',14)} Unavailable</div><div class="s">No demand estimate supplied</div></div>
+       <div class="card kpi"><div class="l">Instructional cost</div><div class="v sm lock">${ic('lock',14)} Unavailable</div><div class="s">Needs rates (Release 2)</div></div>
+      </div></div>
+    <div class="card"><div class="cardhd"><h3>Section counts, Fall 2026</h3><span class="muted">Other departments stay at their drafts (−${s.rest})</span></div>
+     <div class="tw"><table><thead><tr><th>Course</th><th class="num">Baseline</th><th class="num">Planned</th></tr></thead><tbody>${FALL.map(c=>{const n=s.counts[c.code]??c.secs,ok=edit&&inScope(c.prog);return `<tr><td><span class="mono">${c.code}</span> <span class="chip ${TYPE[c.type][1]}">${TYPE[c.type][0]}</span></td><td class="num">${c.secs}</td><td class="num"><span class="stepper"><button data-act="cnt" data-c="${c.code}" data-d="-1" aria-label="Fewer sections of ${c.code}" ${ok&&n>minSecs(c)?'':'disabled'}>−</button><b>${n}</b><button data-act="cnt" data-c="${c.code}" data-d="1" aria-label="More sections of ${c.code}" ${ok&&n<c.secs+1?'':'disabled'}>+</button></span></td></tr>`}).join('')}</tbody></table></div>
+     <div class="muted" style="padding:10px 18px;font-size:12px;border-top:1px solid var(--border)">${edit?(SCOPED.includes(state.role)?'You can change Business counts only.':'Reducing a count asks for a reason. Capstone, milestone and required courses keep at least one section.'):'Viewing only. Strategists and Tacticians change counts.'}</div></div>
+   </div>
+   ${m.flags.length?`<div class="card"><div class="cardhd"><h3>Risk flags</h3><span class="chip ${m.flags.length>4?'bad':'warn'}">${m.flags.length}</span></div><div style="padding:6px 18px 14px"><ul style="margin:8px 0 0;padding-left:18px;display:grid;gap:6px">${m.flags.map(f=>`<li>${esc(f)}</li>`).join('')}</ul></div></div>`:''}
+   <div class="card"><div class="cardhd"><h3>Saved scenarios</h3><span class="muted">Saved versions are immutable</span></div><div class="tw"><table><thead><tr><th>Scenario</th><th class="num">Target</th><th class="num">Planned</th><th class="num">Gap</th><th class="num">Required reduced</th><th class="num">Risk flags</th><th>Status</th><th></th></tr></thead><tbody>${state.scenarios.map((x,i)=>{const z=metrics(x.counts,x.target,x.rest);return `<tr><td><b>${esc(x.name)}</b> <span class="mono muted">${x.id}</span><div class="muted" style="font-size:12px">${x.by} · ${x.when}</div></td><td class="num">${x.target?z.tgt:'n/a'}</td><td class="num">${z.planned}</td><td class="num">${x.target?(z.gap>0?'+':'')+z.gap:'n/a'}</td><td class="num">${z.reqRed}</td><td class="num">${z.flags.length}</td><td><span class="chip ${x.target?'':'info'}">${x.status}</span></td><td style="text-align:right;white-space:nowrap"><button class="btn sm" data-act="load-scen" data-i="${i}">Load</button> <button class="btn sm" data-act="use-scen" data-i="${i}" ${can('submit')&&x.target?'':'disabled'}>Use this version</button></td></tr>`}).join('')}</tbody></table></div></div></div>`;
+};
+
+PAGES.exceptions=()=>`<div class="wrap">${head('Exceptions & waivers','One queue for blocking failures, waiver requests and acknowledgements. Nothing is approved automatically, and the person who proposes a change cannot be the one who approves it.')}
+  ${staleBanner()}
+  <div class="card"><div class="tw"><table><thead><tr><th>ID</th><th>Course</th><th>Change</th><th>Rule</th><th>Handling</th><th>Status</th><th></th></tr></thead><tbody>${EXC.map(e=>{const t=TERMS.find(x=>x.id===e.term).label,r=rule(e.rule);return `<tr><td><span class="mono">${e.id}</span></td><td><b>${e.code}</b><div class="muted">${esc(byCode(e.code).title)}</div></td><td>${e.kind==='gap'?`No section in ${t}`:e.kind==='move'?`Move from ${TERMS.find(x=>x.id===e.from).label} to ${t}`:`Add a section in ${t}`}<div class="muted" style="max-width:36ch">${esc(e.reason)}</div></td><td><span class="mono">${e.rule}</span><div class="muted" style="font-size:12px">${r.cls}</div></td><td>${e.kind==='gap'?'<span class="chip bad">Blocking, cannot be waived</span>':isHard(e.rule)?'<span class="chip warn">Waiver with expiry</span>':'<span class="chip">Acknowledge</span>'}</td><td><span class="chip ${e.status==='Open'?(e.kind==='gap'?'bad':'warn'):e.status==='Rejected'?'bad':'good'}">${e.status}</span>${e.decided?`<div class="muted" style="font-size:12px;margin-top:4px;max-width:28ch">${esc(e.decided)}</div>`:''}</td><td style="text-align:right"><button class="btn sm" data-act="exc" data-id="${e.id}">Review</button></td></tr>`}).join('')}</tbody></table></div></div></div>`;
+
+PAGES.approvals=()=>{
+  const oc=openCount(),h=planHash();
+  const sub=can('submit')&&state.plan==='Draft'&&!oc;
+  return `<div class="wrap">${head('Approvals','Draft, submit, approve, export. An approval is bound to the exact content hash, so any later edit needs a new review. Exporting is a handoff to the Registrar, not a publication to the student system.',`<button class="btn" data-act="export-draft" ${can('exportDraft')?'':'disabled'}>${ic('down')} Export draft CSV</button>`)}
+  ${staleBanner()}
+  <div class="card pad">${stateSteps()}
+   <div style="margin-top:16px;display:grid;gap:10px">
+    ${oc?`<div class="banner warn">${ic('alert')}<span>${oc} item${oc>1?'s are':' is'} waiting for a decision${openGaps().length?', including a blocking failure':''}. The plan cannot be submitted until ${oc>1?'they are':'it is'} resolved.</span> <button class="btn sm" data-act="go" data-p="exceptions" style="margin-left:auto">Open exceptions</button></div>`:`<div class="banner good">${ic('check')}<span>No blocking failures and nothing waiting. The plan can go to review.</span></div>`}
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+     <button class="btn pri" data-act="submit" ${sub?'':'disabled'}>Submit for review</button>
+     <button class="btn" data-act="approve" ${can('approve')&&state.plan==='Submitted'?'':'disabled'}>${ic('check')} Approve this version</button>
+     <button class="btn" data-act="changes" ${can('requestChanges')&&state.plan==='Submitted'?'':'disabled'}>Request changes</button>
+     <button class="btn" data-act="export-official" ${can('exportOfficial')&&state.plan==='Approved'?'':'disabled'}>${ic('down')} Export approved plan</button></div>
+    <div class="muted" style="font-size:12px">Chairs and deans approve their assigned scope, and the Registrar exports. Who approves what is still to be decided with Newman; these defaults can be changed in Roles & Approvals. Publishing sections to the student system arrives in Release 2.</div></div></div>
+  <div class="card"><div class="cardhd"><h3>Versions</h3></div><div class="tw"><table><thead><tr><th>Version</th><th>What it is</th><th>Status</th><th>Content hash</th><th class="num">Blocking</th><th class="num">Open items</th></tr></thead><tbody>
+   <tr><td><b>v2</b></td><td>Rotation Fall 2026 to Spring 2030 with 10% advisory target</td><td><span class="chip ${state.plan==='Draft'?'info':state.plan==='Submitted'?'warn':'good'}">${state.plan}</span></td><td><span class="mono">${h}</span></td><td class="num">${openGaps().length}</td><td class="num">${oc}</td></tr>
+   <tr><td><b>v1</b></td><td>Baseline imported from the catalog and past schedules</td><td><span class="chip good">Validated</span></td><td><span class="mono">a41c0e7d</span></td><td class="num">0</td><td class="num">0</td></tr></tbody></table></div></div>
+  <div class="card"><div class="cardhd"><h3>Change between v1 and v2</h3></div><div style="padding:6px 18px 16px;display:grid;gap:8px">${EXC.map(e=>`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="chip ${e.kind==='gap'?'bad':e.kind==='move'?'info':'warn'}">${e.kind==='gap'?'Missing':e.kind==='move'?'Moved':'Added'}</span><b>${e.code}</b> ${e.kind==='move'?`${TERMS.find(x=>x.id===e.from).label} to ${TERMS.find(x=>x.id===e.term).label}`:e.kind==='gap'?`no section in ${TERMS.find(x=>x.id===e.term).label}`:`one section in ${TERMS.find(x=>x.id===e.term).label}`}<span class="muted">· ${e.id} · ${e.status}</span></div>`).join('')}</div></div></div>`;
+};
+
+/* planned pages */
+const planned=(id,purpose,bullets,preview,note)=>`<div class="wrap">${head(META[id].title,purpose,`<span class="chip">${META[id].rel?'Release '+META[id].rel.slice(1)+': planned':'Planned'}</span>`)}
+  <div class="banner">${ic('lock')}<span>Not in the first build. Shown so the navigation, data model and release order can be reviewed now.${note?' '+note:''}</span></div>
+  <div class="cols"><div class="card pad planned"><h3>What this page will do</h3><ul>${bullets.map(b=>`<li>${b}</li>`).join('')}</ul></div><div class="card pad" style="opacity:.92"><h3 style="margin-bottom:12px">Preview</h3>${preview}</div></div></div>`;
+const barRow=(l,v,max,cls='')=>`<div class="bar"><span>${l}</span><div class="track"><div class="fill ${cls}" style="width:${v/max*100}%"></div></div><span class="num">${v}</span></div>`;
+PAGES.schedules=()=>planned('schedules','Place each section on a time, in a room, with an instructor, and keep every hard rule true.',['Weekly grid by room, instructor or program with conflicts shown as they happen','Lock a placement, then repair only what it affects; a conflict with a lock is reported, never relaxed','Linked lecture and lab meetings, cross-listed courses and campus travel time','Every solver result gets an independent validation, and status is OPTIMAL, FEASIBLE, INFEASIBLE or UNKNOWN. A time-out is never called impossible.'],`<div class="tw"><table><thead><tr><th></th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th></tr></thead><tbody>${['9:00','10:30','1:00','2:30'].map((t,i)=>`<tr><td class="mono">${t}</td>${[0,1,2,3].map(d=>`<td>${(i+d)%3===0?'<span class="chip req">BUS-210 · Hall 1</span>':(i+d)%3===1?'<span class="chip cap">BIO-490 · Lab 2</span>':''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
+PAGES.faculty=()=>planned('faculty','See teaching load against who is qualified and available, and prefer full-time faculty where policy allows.',['Qualifications, availability, load units and employment type, with effective dates','Full-time, part-time, adjunct and guest views','Historical teaching alone never counts as a qualification','Load warnings before they reach a contract'],`<div class="bars">${barRow('Full-time',92,120)}${barRow('Part-time',34,120,'alt')}${barRow('Adjunct',58,120,'warn')}${barRow('Guest',6,120,'alt')}</div>`);
+PAGES.spaces=()=>planned('spaces','Know which rooms exist, what they hold and where sections can go.',['Rooms with capacity, features, closures and sharing rules','Eligibility checks against section needs; labs need lab rooms','Asynchronous courses do not use a physical room by default','Shares the room catalog with the Bookings page'],`<div class="bars">${barRow('Hall 1',78,100)}${barRow('Science 110',64,100)}${barRow('Lab 2',91,100,'warn')}${barRow('Seminar B',38,100,'alt')}</div>`);
+PAGES.patterns=()=>planned('patterns','Define the meeting patterns and time blocks sections may use.',['MWF, TR and evening patterns with start times','Date patterns for part-of-term courses and holidays','Per-program rules for allowed patterns','Used as hard limits when timetabling'],`<div style="display:flex;gap:8px;flex-wrap:wrap"><span class="chip req">MWF 50 min</span><span class="chip req">TR 75 min</span><span class="chip">Mon evening 150 min</span><span class="chip">Sat 4 hours</span></div>`);
+PAGES.objectives=()=>planned('objectives','Set what matters most for a scenario and see what each choice costs.',['Objective profile: student access, adjunct use, cost, disruption, preferences, with explicit hard limits kept apart from ranked goals','Decision cost ledger: per course or teaching group, split into supplied rates, allocated costs and estimates','Missing rates show as unavailable, and totals reconcile to line items without double-counting cross-listed teaching','Cost never overrides an academic protection; an impossible budget returns an unmet target, not a hidden relaxation'],`<div class="tw"><table><thead><tr><th>Priority</th><th>Objective</th></tr></thead><tbody><tr><td>1</td><td>Required coverage (hard)</td></tr><tr><td>2</td><td>Student access</td></tr><tr><td>3</td><td>Adjunct sections</td></tr><tr><td>4</td><td>Disruption from the last plan</td></tr></tbody></table></div>`);
+PAGES.demand=()=>planned('demand','Turn course requests and degree progress into demand the plan can use.',['Observed requests kept separate from projected demand, and no student counted twice across programs','Pathway demand by term from pseudonymous student records','Capacity bottlenecks before registration opens','Missing degree-audit data limits what the page concludes'],`<div class="bars">${barRow('BUS-101',118,140)}${barRow('BIO-101',131,140,'warn')}${barRow('PSY-101',96,140)}${barRow('EDU-110',57,140,'alt')}</div>`);
+PAGES.conflicts=()=>planned('conflicts','Show which courses students cannot take together and what it costs them.',['Conflict matrix by pair of courses','Students affected and graduation impact','Suggested alternative meeting patterns','Compare conflicts before and after a change'],`<div class="tw"><table><thead><tr><th>Pair</th><th class="num">Students</th></tr></thead><tbody><tr><td>BUS-210 / BIO-101</td><td class="num">23</td></tr><tr><td>PSY-220 / EDU-250</td><td class="num">17</td></tr><tr><td>BUS-310 / PSY-101</td><td class="num">9</td></tr></tbody></table></div>`);
+PAGES.pathways=()=>planned('pathways','Check that every program path can be completed on time with the schedule offered.',['Term-by-term paths per program','Blocked, clear and unsupported student counts','Sequence gaps and missing offerings','Feeds the exceptions queue'],`<div style="display:flex;gap:8px;flex-wrap:wrap"><span class="chip good">Clear 412</span><span class="chip warn">At risk 38</span><span class="chip bad">Blocked 11</span></div>`);
+PAGES.registration=()=>planned('registration','Watch registration against the plan and act on near-capacity or under-enrolled sections.',['Fill rates by section with refresh time shown, and alerts once per threshold change','Waitlists and blocked registrations kept as separate signals with reason codes; a prerequisite block is not a capacity shortage','Raw attempts and unique students counted separately','Suggested merges or cancellations stay proposals until reviewed'],`<div class="bars">${barRow('BUS-101 §1',96,100,'warn')}${barRow('BIO-210 §2',44,100,'alt')}${barRow('PSY-340 §1',18,100,'bad')}${barRow('EDU-110 §1',71,100)}</div>`);
+PAGES.planvsactual=()=>planned('planvsactual','Freeze actual enrollment after add/drop and compare it with the forecast and plan used for that term.',['Original forecast snapshot kept, never overwritten by a later revision','Error by course, program and department, split into forecast error, cancelled sections and seat-limited registration','Corrections recorded with reasons','Feeds the next plan'],`<div class="tw"><table><thead><tr><th>Course</th><th class="num">Planned</th><th class="num">Actual</th></tr></thead><tbody><tr><td>BUS-101</td><td class="num">84</td><td class="num">91</td></tr><tr><td>BIO-101</td><td class="num">112</td><td class="num">98</td></tr><tr><td>PSY-220</td><td class="num">46</td><td class="num">44</td></tr></tbody></table></div>`);
+PAGES.forecast=()=>planned('forecast','Look ahead from the incoming freshman funnel, retention and program demand, with ranges and a visible model version.',['Starts as a transparent seasonal baseline; a more complex model is added only if it beats the baseline in chronological backtests','High and low range with plain-language reasons','Workforce and job-market signals are advisory notes or scenario assumptions, and never change required offerings or hard rules','Corrections create a new forecast version'],`<div class="bars">${barRow('BUS-101 low',92,160,'alt')}${barRow('BUS-101 high',128,160)}${barRow('BIO-101 low',104,160,'alt')}${barRow('BIO-101 high',146,160)}</div>`);
+PAGES.utilization=()=>planned('utilization','Measure how well rooms, sections and faculty are used, with the denominator named on every figure.',['Section fill, room seat occupancy and room time utilization defined separately','Faculty load balance','Program-level health and cost where rates exist','Cross-listed teaching counted once'],`<div class="kpis"><div class="card kpi"><div class="l">Section fill</div><div class="v">78%</div></div><div class="card kpi"><div class="l">Room time use</div><div class="v">64%</div></div></div>`);
+PAGES.exams=()=>planned('exams','Schedule final exams without student or room clashes.',['Exam periods and room assignment','Student conflicts and back-to-back checks','Instructor and proctor coverage','Not required for the initial course scheduling replacement'],`<div style="display:flex;gap:8px;flex-wrap:wrap"><span class="chip">Mon 8:00 · BUS-101</span><span class="chip">Mon 10:30 · BIO-101</span><span class="chip">Tue 1:00 · PSY-101</span></div>`,'Needs a separate scope decision before it is built.');
+PAGES.events=()=>planned('events','Coordinate events and shared spaces with the academic schedule.',['One calendar for classes, events and room holds','Shares requests with the Bookings page','Event booking, ticketing and facilities services need a separate gap assessment against the current vendor','Optional'],`<div style="display:flex;gap:8px;flex-wrap:wrap"><span class="chip info">Orientation · Ballroom</span><span class="chip">Open house · Hall 1</span></div>`,'Needs a separate scope decision before it is built.');
+
+/* settings pages */
+PAGES.calendar=()=>`<div class="wrap">${head('Calendar & terms','Fall and Spring parity comes from each term\'s calendar year, never from the academic-year label. Summer and term parts are separate slots that must be configured.',`<button class="btn" disabled>${ic('pen')} Edit calendar</button>`)}
+  <div class="card"><div class="tw"><table><thead><tr><th>Term</th><th>Dates</th><th class="num">Calendar year</th><th>Parity</th><th>Rotation slot</th></tr></thead><tbody>${TERMS.map(t=>`<tr><td><b>${t.label}</b></td><td class="muted">${t.dates}</td><td class="num">${t.label.slice(-4)}</td><td>${+t.label.slice(-4)%2?'Odd':'Even'}</td><td><span class="chip info">${SLOT[t.slot]}</span></td></tr>`).join('')}</tbody></table></div></div>
+  <div class="banner warn">${ic('alert')}<span>Summer, short terms and non-standard calendars are not configured yet. Plans that need them are blocked until a slot is defined.</span></div></div>`;
+PAGES.roles=()=>`<div class="wrap">${head('Roles & approvals','Every screen, export and assistant tool respects institution, department and action permissions. Revoking access takes effect on the next call.')}
+  <div class="card"><div class="tw"><table><thead><tr><th>Role</th><th>Primary work</th><th>Authority</th></tr></thead><tbody>
+   <tr><td><b>Strategist</b></td><td>Rotation, program coverage, horizon, policy</td><td>Proposes rules and waivers; approves only if assigned</td></tr>
+   <tr><td><b>Tactician</b></td><td>Offerings and counts, exceptions, term detail</td><td>Edits drafts inside assigned departments</td></tr>
+   <tr><td><b>Chair / Dean</b></td><td>Review coverage, resources, program impact</td><td>Approves assigned scope; cannot publish without a publishing role</td></tr>
+   <tr><td><b>Registrar</b></td><td>Shared resources, cross-department conflicts, export and publish</td><td>Institution-wide validation and controlled publication</td></tr>
+   <tr><td><b>Faculty contributor</b></td><td>Availability, preferences, qualifications</td><td>Edits their own inputs only</td></tr>
+   <tr><td><b>Administrator</b></td><td>Access, mappings, calendars, approval routes</td><td>Audited; cannot bypass mandatory validation</td></tr>
+   <tr><td><b>Read only</b></td><td>Inspect approved plans and reports</td><td>View authorised scope only</td></tr></tbody></table></div></div>
+  <div class="banner">${ic('pen')}<span>Approval routes and waiver permissions are versioned configuration. The default is department review with central export. The real routes are still to be decided with Newman.</span></div></div>`;
+PAGES.imports=()=>`<div class="wrap">${head('Imports & reconciliation','Every import says what it read, what it kept and what it could not match. Nothing is dropped silently, and importing the same batch twice creates no duplicates.',`<button class="btn pri" data-act="toast" data-m="File upload is not part of this mockup">${ic('upload')} Upload file</button>`)}
+  <div class="kpis"><div class="card kpi"><div class="l">Rows read</div><div class="v">257</div><div class="s">Fall 2026 sample</div></div><div class="card kpi"><div class="l">Course codes</div><div class="v">67</div></div><div class="card kpi good"><div class="l">Dropped</div><div class="v">0</div><div class="s">All rows accounted for</div></div><div class="card kpi warn"><div class="l">Warnings</div><div class="v">3</div></div></div>
+  <div class="card"><div class="cardhd"><h3>Recent imports</h3></div><div class="tw"><table><thead><tr><th>File</th><th>Type</th><th class="num">Rows</th><th>Result</th><th>When</th></tr></thead><tbody>
+   <tr><td class="mono">Fall_2026_Course_Schedule_Uploaded_SLIS_Data.xlsx</td><td>Past schedule</td><td class="num">257</td><td><span class="chip warn">Imported with 3 warnings</span></td><td>22 Sep</td></tr>
+   <tr><td class="mono">catalog_sample.csv</td><td>Course catalog</td><td class="num">21</td><td><span class="chip good">Imported</span></td><td>22 Sep</td></tr>
+   <tr><td class="mono">rotation_rules_template.csv</td><td>Rotation rules</td><td class="num">9</td><td><span class="chip good">Imported</span></td><td>22 Sep</td></tr></tbody></table></div></div>
+  <div class="card"><div class="cardhd"><h3>Warnings and blocks</h3></div><div style="padding:8px 18px 16px;display:grid;gap:8px"><div><span class="chip warn">Warning</span> The institution name on the file is not verified (source notes on the sheet).</div><div><span class="chip warn">Warning</span> Every section is marked Proposed, so none can be treated as an approved baseline.</div><div><span class="chip warn">Warning</span> Instructors are placeholders on most rows. Faculty matching waits for Release 2 data.</div><div><span class="chip bad">Blocks generation</span> Illustration: a program with no capstone mapped stops generation for that program only, and names the row to fix.</div></div></div></div>`;
+PAGES.integrations=()=>`<div class="wrap">${head('Integrations','Move data in and out of the student, finance and learning systems. The student information system stays the system of record for published sections, registration and enrollment.')}
+  <div class="card"><div class="tw"><table><thead><tr><th>System</th><th>Direction</th><th>Mode</th><th>Status</th></tr></thead><tbody>
+   <tr><td><b>Student information system</b></td><td>In: catalog, sections, enrollment. Out: approved plan</td><td>CSV and Excel templates in Release 1; first connector in Release 2</td><td><span class="chip">Not connected</span></td></tr>
+   <tr><td><b>Open WebUI (Ask Digi)</b></td><td>Typed tools call the Academics API</td><td>Private API, user's permissions re-checked on every call</td><td><span class="chip good">Planned</span></td></tr>
+   <tr><td><b>Booking system</b></td><td>Room catalog and requests</td><td>API</td><td><span class="chip info">Shared with Bookings</span></td></tr>
+   <tr><td><b>ERP</b></td><td>Faculty cost for adjunct analysis</td><td>API</td><td><span class="chip">Release 2</span></td></tr></tbody></table></div></div>
+  <div class="banner">${ic('shield')}<span>Drafts and scenarios never leave Digi. An export is a handoff; publication is only confirmed after read-back from the student system (Release 2).</span></div></div>`;
+PAGES.audit=()=>`<div class="wrap">${head('Audit log','Who changed what, when, and why. Waivers and overrides always carry a reason, an actor and an expiry.')}
+  <div class="card"><div class="tw"><table><thead><tr><th>When</th><th>Who</th><th>What</th><th>Type</th></tr></thead><tbody>${state.audit.map(a=>`<tr><td class="muted" style="white-space:nowrap">${a.t}</td><td>${a.who}</td><td>${esc(a.what)}</td><td><span class="chip">${a.tag}</span></td></tr>`).join('')}</tbody></table></div></div></div>`;
+PAGES.readiness=()=>`<div class="wrap">${head('Replacement readiness','What has to be true before Digi can replace Ad Astra for course scheduling. A feature demo is not enough.')}
+  <div class="card"><div class="tw"><table><thead><tr><th>Condition</th><th>Evidence needed</th><th>Status</th></tr></thead><tbody>
+   <tr><td><b>Offering and meeting model fits Newman</b></td><td>Term calendar, faculty load policy and room constraints pass acceptance tests</td><td><span class="chip">Not started</span></td></tr>
+   <tr><td><b>First SIS connector</b></td><td>Import, controlled publish, read-back, retries and conflict handling pass in a test environment</td><td><span class="chip">Not started</span></td></tr>
+   <tr><td><b>Collaboration matches real responsibilities</b></td><td>Department collaboration and final approvals match actual practice</td><td><span class="chip">Not started</span></td></tr>
+   <tr><td><b>Parallel term run</b></td><td>Registrar reviews a parallel term, discrepancies closed, recovery and cutover rehearsed</td><td><span class="chip">Not started</span></td></tr></tbody></table></div></div>
+  <div class="banner warn">${ic('alert')}<span>Event booking, exams, ticketing and facilities services in the current vendor suite need a separate gap assessment before any broader replacement claim.</span></div></div>`;
+
+/* ---------- sheets, modal, ask ---------- */
+function openSheet(title,sub,body,foot=''){
+  $('#layer').innerHTML=`<div id="scrim" data-act="close"></div><aside id="sheet" role="dialog" aria-label="${esc(title)}"><div class="hd"><div><h2 style="font-size:18px">${title}</h2><div class="muted">${sub}</div></div><button class="btn sm" data-act="close" aria-label="Close">${ic('x')}</button></div><div class="bd">${body}</div>${foot?`<div class="ft">${foot}</div>`:''}</aside>`;
+}
+function closeLayer(){$('#layer').innerHTML=''}
+const dot=ok=>ok==='ok'?'<div class="dot ok">✓</div>':ok==='no'?'<div class="dot no">×</div>':ok==='na'?'<div class="dot na">–</div>':ok==='data'?'<div class="dot warn">?</div>':'<div class="dot warn">!</div>';
+function trace(code,termId){
+  const c=byCode(code),t=TERMS.find(x=>x.id===termId),p=placement(code,termId),out=[];
+  const slotOk=c.slots.includes(t.slot),rid=c.type==='capstone'?'R-002':c.type==='milestone'?'R-003':'R-001';
+  if(p.flag==='gap')out.push({ok:'no',rule:rid,text:`FAIL. ${TYPE[c.type][0]} courses must be offered in ${t.label}, a ${SLOT[t.slot]} term, but the planned count is 0. Cannot be waived.`});
+  else out.push({ok:p.flag==='ovr'?'warn':slotOk&&!p.flag?'ok':'warn',rule:rid,text:slotOk?`PASS. ${TYPE[c.type][0]} courses sit in ${c.slots.map(s=>SLOT[s]).join(' and ')}. ${t.label} is ${SLOT[t.slot]}.`:`FAIL, waiver requested. ${t.label} is ${SLOT[t.slot]}, outside this course's slots (${c.slots.map(s=>SLOT[s]).join(', ')}).`});
+  if(c.pre){const earlier=TERMS.slice(0,TERMS.findIndex(x=>x.id===termId)+1).filter(x=>placement(c.pre,x.id).secs>0).pop();out.push({ok:earlier?'ok':'no',rule:'R-004',text:earlier?`PASS. Prerequisite ${c.pre} is offered in ${earlier.label}, same term or earlier.`:`FAIL. Prerequisite ${c.pre} is not offered before this term.`})}
+  else out.push({ok:'na',rule:'R-004',text:'NOT APPLICABLE. This course has no prerequisite.'});
+  out.push({ok:'ok',rule:'R-005',text:'PASS. No required course goes more than two terms without an offering in this program path.'});
+  out.push({ok:p.flag&&p.flag!=='gap'?'warn':'ok',rule:'R-007',text:p.flag&&p.flag!=='gap'?'Differs from the slot used last cycle (soft rule, needs acknowledgement).':'PASS. Same slot as the last cycle.'});
+  const idx=TERMS.findIndex(x=>x.id===termId);
+  out.push({ok:idx<3?'ok':'data',rule:'R-009',text:idx<3?`PASS. Projected enrollment ${c.hist[3]} is at least 10.`:'INSUFFICIENT DATA. No enrollment projection is loaded for this term, so this check is not counted as a pass.'});
+  return out;
+}
+const traceHtml=l=>`<div class="trace">${l.map(x=>`<div class="tr">${dot(x.ok)}<div><b class="mono">${x.rule}</b> ${esc(x.text)}</div></div>`).join('')}</div>`;
+function cellSheet(code,termId){
+  const c=byCode(code),t=TERMS.find(x=>x.id===termId),p=placement(code,termId);
+  const hist=[{t:'22 Sep',w:'Imported from catalog and past schedules, baseline v1'},...state.audit.filter(a=>a.what.includes(code)).slice(0,4).map(a=>({t:a.t,w:`${a.who}: ${a.what}`}))];
+  openSheet(`${c.code} ${esc(c.title)}`,`${t.label} · ${SLOT[t.slot]}`,
+   `<div class="kv"><div><span>Type</span><span class="chip ${TYPE[c.type][1]}">${TYPE[c.type][0]}</span></div><div><span>Sections planned</span><b>${p.secs}</b></div><div><span>Seats (at ${CAP} per section)</span><b>${p.secs*CAP}</b></div><div><span>Last 4 terms (enrollment)</span><span>${c.hist.join(' · ')}</span></div><div><span>Prerequisite</span><span class="mono">${c.pre||'None'}</span></div></div>
+    <div><h3 style="margin-bottom:10px">Why it is here</h3>${traceHtml(trace(code,termId))}</div>
+    <div class="prov"><span class="chip info">Institutional fact: catalog</span><span class="chip good">Rule result</span>${p.flag==='ovr'?'<span class="chip warn">Approved waiver</span>':''}<span class="chip">AI explanation: none, this is a rule trace</span></div>
+    ${p.ex?`<div class="banner ${p.flag==='gap'?'bad':p.flag==='exc'?'warn':'good'}">${ic(p.flag==='ovr'?'check':'alert')}<span>${p.ex.id} · ${p.flag==='gap'?'Blocking.':p.flag==='exc'?'Waiting for a decision.':'Approved.'} ${esc(p.ex.reason)}</span></div>`:''}
+    <div><h3 style="margin-bottom:8px">Change history</h3><div style="display:grid;gap:6px">${hist.map(h=>`<div style="display:flex;gap:10px"><span class="muted" style="min-width:92px">${h.t}</span><span>${esc(h.w)}</span></div>`).join('')}</div></div>`,
+   `<button class="btn" data-act="request" data-c="${code}" data-t="${termId}" ${can('request')&&inScope(c.prog)?'':'disabled'} title="${can('request')?(inScope(c.prog)?'':'Outside your department'):'Strategists and Tacticians request waivers'}">Request a waiver</button><button class="btn pri" data-act="close">Done</button>`);
+}
+function courseSheet(code){
+  const c=byCode(code);
+  openSheet(`${c.code} ${esc(c.title)}`,PROGS[c.prog],`<div class="kv"><div><span>Type</span><span class="chip ${TYPE[c.type][1]}">${TYPE[c.type][0]}</span></div><div><span>Rotation slots</span><span>${c.slots.length===4?'Every term':c.slots.map(s=>SLOT[s]).join(', ')}</span></div><div><span>Sections per offering</span><b>${c.secs}</b></div><div><span>Prerequisite</span><span class="mono">${c.pre||'None'}</span></div></div>
+   <div><h3 style="margin-bottom:10px">Planned offerings</h3><div style="display:flex;gap:6px;flex-wrap:wrap">${TERMS.map(t=>{const p=placement(code,t.id);return p.secs?`<span class="chip ${p.flag==='exc'?'warn':TYPE[c.type][1]}">${t.label} · ${p.secs}</span>`:''}).join('')}</div></div>`,`<button class="btn pri" data-act="close">Done</button>`);
+}
+function excSheet(id){
+  const e=EXC.find(x=>x.id===id),c=byCode(e.code),t=TERMS.find(x=>x.id===e.term),r=rule(e.rule);
+  const hard=isHard(e.rule),blocking=e.kind==='gap';
+  const same=e.by===state.role,scopeOk=inScope(c.prog);
+  const why=!can('decide')?`Strategists and Chairs / Deans decide. You are viewing as ${state.role}.`:same?'You proposed this, so a different approver must decide it.':!scopeOk?'Outside your department scope.':'';
+  let form='',foot='';
+  if(e.status!=='Open'){foot=`<button class="btn pri" data-act="close">Done</button>`}
+  else if(blocking){
+    form=`<div class="banner bad">${ic('lock')}<span><b>Cannot be waived.</b> ${r.id} protects required coverage. A generic override is not allowed. Fix the plan instead.</span></div>`;
+    foot=`<button class="btn pri" data-act="fix" data-id="${id}" ${can('editCounts')&&scopeOk?'':'disabled'}>Fix: restore 1 section</button>`;
+  } else {
+    form=`<div><h3 style="margin-bottom:10px">${hard?'Waiver':'Acknowledgement'}</h3>
+      <div class="field"><label for="exr">Reason <span style="color:var(--bad)">*</span></label><textarea class="inp" id="exr" placeholder="Why is this the right call?"></textarea></div>
+      ${hard?`<div class="field"><label for="exe">Waiver expires</label><select class="inp" id="exe"><option>End of ${t.label}</option><option>End of the rotation cycle</option><option>End of academic year 2027-28</option></select></div>`:''}
+      <div id="exerr" style="color:var(--bad)" hidden>Add a reason to continue.</div>
+      ${why?`<div class="banner" style="margin-top:8px">${ic('lock')}<span>${why}</span></div>`:''}</div>`;
+    foot=`<button class="btn danger" data-act="decide" data-id="${id}" data-d="Rejected" ${why?'disabled':''}>Reject and revert</button><button class="btn pri" data-act="decide" data-id="${id}" data-d="Approved" ${why?'disabled':''}>${hard?'Approve waiver':'Acknowledge'}</button>`;
+  }
+  openSheet(`${e.id} · ${e.code}`,esc(c.title),
+   `<div class="kv"><div><span>Request</span><span>${blocking?`No section in ${t.label}`:e.kind==='move'?`Move from ${TERMS.find(x=>x.id===e.from).label} to ${t.label}`:`Add a section in ${t.label}`}</span></div><div><span>Rule</span><span><span class="mono">${e.rule}</span> ${r.cls}</span></div><div><span>Handling</span><span>${blocking?'Blocking':hard?(r.waivable?'Waiver with expiry':'Not waivable'):'Acknowledge'}</span></div><div><span>Proposed by</span><span>${e.by}</span></div><div><span>Status</span><span class="chip ${e.status==='Open'?'warn':e.status==='Approved'?'good':'bad'}">${e.status}</span></div></div>
+    <div><h3 style="margin-bottom:8px">Reason given</h3><p>${esc(e.reason)}</p></div>
+    <div><h3 style="margin-bottom:10px">Rule trace for ${t.label}</h3>${traceHtml(trace(e.code,e.term))}</div>
+    ${e.decided?`<div class="banner ${e.status==='Approved'?'good':'warn'}"><span>${esc(e.decided)}</span></div>`:''}${form}`,foot);
+}
+function reasonModal(title,verb,cb,note='A reason is required and is saved in the audit log.'){
+  $('#layer').insertAdjacentHTML('beforeend',`<div id="modal"><div class="box"><h2 style="font-size:18px;margin-bottom:6px">${title}</h2><p class="muted" style="margin-bottom:14px">${note}</p><div class="field"><label for="why">Reason <span style="color:var(--bad)">*</span></label><textarea class="inp" id="why" placeholder="Why is this the right call?"></textarea></div><div id="whyerr" style="color:var(--bad);margin-bottom:8px" hidden>Add a reason to continue.</div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" data-act="mclose">Cancel</button><button class="btn pri" id="mok">${verb}</button></div></div></div>`);
+  $('#why').focus();
+  $('#mok').onclick=()=>{const v=$('#why').value.trim();if(!v){$('#whyerr').hidden=false;return}$('#modal').remove();cb(v)};
+}
+function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,3600)}
+
+/* Ask Digi (typed tools only) */
+const SUGG=['Plan Fall 2026 with a 10% reduction.','What if we adjust to 15% instead?','Why is BUS-490 in Spring 2028?','Which exceptions need my review?'];
+const contract=o=>`<div class="contract">${Object.entries(o).map(([k,v])=>`<div><span>${k}</span><span>${esc(v)}</span></div>`).join('')}</div>`;
+function answer(q){
+  const t=q.toLowerCase();
+  const fresh='22 Sep 14:10';
+  if(/\b(approve|publish|waive)\b/.test(t)&&!/exception|review|why|if/.test(t))return {tool:null,text:`I can't approve, waive or publish. Those are actions only a person takes, from the Approvals and Exceptions pages. I can prepare a draft and show what the reviewer will see.`,prov:[]};
+  if(/15\s*%|15 percent|adjust to 15/.test(t)){const a=metrics(state.scenarios[1].counts,10,state.scenarios[1].rest),b=metrics(state.scenarios[2].counts,15,state.scenarios[2].rest);
+    return {tool:`create_scenario(baseline="v1", reduction_target=0.15)  →  compare_versions("S-002","S-003")`,run:'S-003',text:`I forked baseline v1 with a 15% advisory target (${b.tgt} sections) and compared it with the 10% scenario. At 10%, planned is ${a.planned} (${a.gap} above the ${a.tgt} target) with ${a.flags.length} risk flags. At 15%, planned is ${b.planned} (${b.gap>0?b.gap+' above':-b.gap+' below'} the ${b.tgt} target) with ${b.flags.length} risk flags and ${b.reqRed} required courses reduced. Neither changes the approved plan.`,
+     c:{Scope:'Fall 2026, all programs (synthetic)',Baseline:'v1, imported 22 Sep','Proposal':'S-003 draft',Status:'Not submitted','Data as of':fresh,'Unmet demand':'Unavailable, no estimate supplied','Next action':'Review counts, then Use this version'},prov:['Rule result','Institutional fact']}}
+  if(/10\s*%|reduction|plan fall/.test(t)){const m=metrics(state.scn.counts,10,state.scn.rest);
+    return {tool:`create_scenario(baseline="v1", term="Fall 2026", reduction_target=0.10)`,run:'S-002',text:`Created a draft scenario from baseline v1 with an advisory 10% target: ${m.tgt} of 220 sections. Counts are set by tacticians in Release 1, so I have not changed any. Planned is currently ${m.planned}, ${Math.max(0,m.gap)} above target. All required courses and capstones are still offered, ${m.flags.length} risk flags need review, and ${openCount()} item${openCount()===1?'':'s'} wait for a decision.`,
+     c:{Scope:'Fall 2026, all programs (synthetic)',Baseline:'v1, imported 22 Sep','Proposal':'S-002 draft',Status:'Not submitted','Data as of':fresh,'Unmet demand':'Unavailable, no estimate supplied','Next action':'Adjust counts on the Scenarios page'},prov:['Rule result','Institutional fact']}}
+  if(/490|why/.test(t))return {tool:`explain_offering(course="BUS-490", term="Spring 2028")`,run:'RT-0071',text:`BUS-490 is a capstone. Rule R-002 places capstones only in their slot, and BUS-490's slot is Spring Even, which Spring 2028 is, so R-002 passes. Its prerequisite BUS-410 is offered in Spring 2027, so R-004 passes. It sat in the same slot last cycle, so R-007 passes. R-009 (minimum enrollment) has insufficient data for Spring 2028 and is not counted as a pass.`,
+     c:{Scope:'BUS-490, Spring 2028',Baseline:'v1','Proposal':'v2 draft',Status:state.plan,'Data as of':fresh,'Next action':'None needed'},prov:['Rule result','Institutional fact','AI explanation']}
+  if(/exception|review|attention|waiver/.test(t)){const o=EXC.filter(e=>e.status==='Open');return {tool:`list_exceptions(status="open")`,run:'EX-0019',text:o.length?`${o.length} waiting: ${o.map(e=>`${e.id} ${e.code} (${e.kind==='gap'?'blocking, cannot be waived':isHard(e.rule)?'waiver':'acknowledge'})`).join('; ')}. A person decides each one on the Exceptions page.`:'Nothing is waiting. All exceptions have been decided.',
+     c:{Scope:'Plan v2',Baseline:'v1','Proposal':'v2 draft',Status:state.plan,'Data as of':fresh,'Next action':o.length?'Open Exceptions':'Submit for review'},prov:['Institutional fact']}}
+  return {tool:null,text:`I can only answer from approved tools, and I have none for that yet. Try: create a reduction scenario, compare scenarios, explain an offering, or list exceptions.`,prov:[]};
+}
+function renderAsk(){
+  if(!state.ask){$('#ask')?.remove();return}
+  const html=`<aside id="ask" role="complementary" aria-label="Ask Digi"><div class="hd"><span class="chip info">${ic('spark',14)} Academic Planner</span><button class="btn sm" data-act="ask" aria-label="Close">${ic('x')}</button></div>
+   <div class="msgs" id="msgs">${state.chat.length?state.chat.map(m=>m.u?`<div class="m u">${esc(m.u)}</div>`:`<div class="m a">${m.tool?`<div class="tool">${ic('cog',13)} ${esc(m.tool)}${m.run?` <span class="badge">${m.run}</span>`:''}</div>`:''}<div>${esc(m.text)}</div>${m.c?contract(m.c):''}${m.prov.length?`<div class="prov">${m.prov.map(p=>`<span class="chip ${p==='AI explanation'?'':'info'}">${p}</span>`).join('')}</div>`:''}</div>`).join(''):`<div class="muted">Ask about plans, scenarios or exceptions. Every number comes from an approved tool, and nothing changes until a person approves it.</div>`}</div>
+   <div class="askfoot"><div class="sugs">${SUGG.map(s=>`<button data-act="sugg" data-q="${esc(s)}">${esc(s)}</button>`).join('')}</div><form class="askrow" id="askf"><input class="inp" id="askin" placeholder="Ask Academic Planner…" aria-label="Message" autocomplete="off"><button class="btn pri" type="submit">Send</button></form><div class="muted" style="font-size:12px">Tools: get_plan_summary, explain_offering, list_exceptions, compare_versions, create_scenario, generate_rotation, propose_count_changes. No approvals, no publishing, no SQL.</div></div></aside>`;
+  $('#ask')?.remove();$('#layer').insertAdjacentHTML('beforeend',html);
+  const m=$('#msgs');m.scrollTop=m.scrollHeight;
+  $('#askf').onsubmit=e=>{e.preventDefault();const v=$('#askin').value.trim();if(v)send(v)};
+}
+function send(q){state.chat.push({u:q});state.chat.push(answer(q));renderAsk();$('#askin')?.focus()}
+
+/* ---------- export ---------- */
+function exportPreview(official){
+  const rows=[];COURSES.forEach(c=>TERMS.forEach(t=>{const p=placement(c.code,t.id);if(p.secs)rows.push([c.code,c.title,t.label,SLOT[t.slot],p.secs,p.secs*CAP,p.flag==='exc'?'Open exception':p.flag==='ovr'?'Approved waiver':''])}));
+  const title=official?'plan_v2_APPROVED_fall2026-spring2030.csv':'plan_v2_DRAFT_fall2026-spring2030.csv';
+  $('#layer').insertAdjacentHTML('beforeend',`<div id="modal"><div class="box" style="width:min(780px,100%)"><h2 style="font-size:18px;margin-bottom:6px">${title}</h2>
+   <div class="banner ${official?'good':'warn'}" style="margin:10px 0">${official?ic('check'):ic('alert')}<span>${official?'Approved version exported for the Registrar. This is a handoff, not a publication. It stays unconfirmed until the student system is loaded and checked.':'DRAFT. Not approved and not a published schedule. Do not load it into the student system.'}</span></div>
+   <div class="kv" style="margin-bottom:12px"><div><span>Version</span><span class="mono">v2 · ${planHash()}</span></div><div><span>Rule set</span><span class="mono">2026.1</span></div><div><span>Data as of</span><span>22 Sep 14:10</span></div><div><span>Rows</span><span>${rows.length}</span></div></div>
+   <div class="tw" style="max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:8px"><table><thead><tr><th>Course</th><th>Title</th><th>Term</th><th>Slot</th><th class="num">Sections</th><th class="num">Seats</th><th>Note</th></tr></thead><tbody>${rows.slice(0,40).map(r=>`<tr>${r.map(x=>`<td>${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+   <p class="muted" style="margin-top:8px;font-size:12px">Downloads are disabled in this mockup.</p>
+   <div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn pri" data-act="mclose">Close</button></div></div></div>`);
+}
+
+/* ---------- actions ---------- */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act]');if(!t)return;
+  const a=t.dataset.act;
+  if(a==='go'){state.page=t.dataset.p;state.side=false;closeLayer();state.ask=false;render();$('#page').scrollTop=0}
+  else if(a==='sec'){state.closed[t.dataset.s]=!state.closed[t.dataset.s];renderSide()}
+  else if(a==='portal'){toast(`${t.dataset.t} is an existing portal page. This mockup only covers Academics.`)}
+  else if(a==='menu'){state.side=!state.side;renderSide()}
+  else if(a==='theme'){const r=document.documentElement,dark=getComputedStyle(r).colorScheme.includes('dark');r.setAttribute('data-theme',dark?'light':'dark')}
+  else if(a==='ask'){state.ask=!state.ask;if(!state.ask)closeLayer();renderAsk()}
+  else if(a==='sugg'){send(t.dataset.q)}
+  else if(a==='close'){closeLayer();if(state.ask)renderAsk()}
+  else if(a==='mclose'){$('#modal')?.remove()}
+  else if(a==='cell'){cellSheet(t.dataset.c,t.dataset.t)}
+  else if(a==='course'){courseSheet(t.dataset.c)}
+  else if(a==='exc'){excSheet(t.dataset.id)}
+  else if(a==='fprog'){state.filters.prog=t.dataset.v;render()}
+  else if(a==='ftype'){state.filters.type=t.dataset.v;render()}
+  else if(a==='fstatus'){state.filters.status=t.dataset.v;render()}
+  else if(a==='export-draft'){exportPreview(false)}
+  else if(a==='export-official'){state.plan='Exported';audit(state.role,'Exported approved plan v2 for the Registrar','Export');render();exportPreview(true)}
+  else if(a==='validate'){const g=openGaps().length,o=openCount();toast(g?`Validation: ${g} blocking failure. The plan cannot be submitted until it is fixed.`:o?`Validation passed. ${o} item${o>1?'s':''} still waiting for a decision.`:'Validation passed. Nothing is waiting.');audit(state.role,'Ran independent validation on plan v2','Validation')}
+  else if(a==='toast'){toast(t.dataset.m)}
+  else if(a==='dismiss-stale'){state.stale='';render()}
+  else if(a==='decide'){
+    const id=t.dataset.id,d=t.dataset.d,why=($('#exr')?.value||'').trim();
+    if(!why){$('#exerr').hidden=false;return}
+    const x=EXC.find(z=>z.id===id),exp=$('#exe')?.value;
+    x.status=d;x.decided=`${d} by ${state.role}${exp&&d==='Approved'?`, expires: ${exp}`:''}. ${why}`;
+    touch(state.role,`${d} ${id} (${x.code})${exp&&d==='Approved'?`, expires ${exp}`:''}: ${why}`,isHard(x.rule)?'Waiver':'Acknowledgement');
+    closeLayer();render();toast(`${id} ${d.toLowerCase()}.`)}
+  else if(a==='fix'){const x=EXC.find(z=>z.id===t.dataset.id);x.status='Resolved';x.decided=`Fixed by ${state.role}: restored 1 section.`;touch(state.role,`Fixed ${x.id}: restored 1 section of ${x.code} in ${TERMS.find(z=>z.id===x.term).label}`,'Plan edit');closeLayer();render();toast('Blocking failure fixed. Validation can now pass.')}
+  else if(a==='request'){
+    const code=t.dataset.c,term=t.dataset.t;
+    reasonModal(`Request a waiver for ${code}`,'Send request',why=>{const n=EXC.length+101;EXC.push({id:'E-'+n,code,term,kind:'add',sev:'Medium',rule:'R-007',status:'Open',by:state.role,reason:why,decided:''});touch(state.role,`Requested waiver E-${n} (${code}, ${TERMS.find(x=>x.id===term).label}): ${why}`,'Waiver');closeLayer();render();toast(`Request E-${n} added to the exceptions queue.`)});
+  }
+  else if(a==='cnt'){
+    const c=byCode(t.dataset.c),d=+t.dataset.d,s=state.scn,n=s.counts[c.code]??c.secs;
+    if(d>0){s.counts[c.code]=n+1;touch(state.role,`Set ${c.code} Fall 2026 to ${n+1} sections`,'Counts');render()}
+    else reasonModal(`Reduce ${c.code} from ${n} to ${n-1}`,'Reduce',why=>{s.counts[c.code]=n-1;touch(state.role,`Reduced ${c.code} Fall 2026 from ${n} to ${n-1}: ${why}`,'Counts');render();const m=metrics(s.counts,s.target,s.rest);if(m.flags.some(f=>f.startsWith(c.code)))toast(`Coverage and capacity checks ran: ${c.code} now has a risk flag.`)},'Reducing a count needs a reason. Coverage and capacity checks run straight after.');
+  }
+  else if(a==='save-scen'){const s=state.scn,id='S-00'+(state.scenarios.length+1);state.scenarios.push({id,name:`${s.target}% target`,target:s.target,rest:s.rest,counts:{...s.counts},by:state.role,when:'Today',status:'Saved'});audit(state.role,`Saved scenario ${id} (${s.target}% target)`,'Scenario');toast(`Saved ${id}. It cannot be changed, only forked.`);render()}
+  else if(a==='load-scen'){const x=state.scenarios[+t.dataset.i];state.scn={name:'Working draft',target:x.target,rest:x.rest,counts:{...x.counts}};render()}
+  else if(a==='use-scen'){const x=state.scenarios[+t.dataset.i];state.scn={name:'Working draft',target:x.target,rest:x.rest,counts:{...x.counts}};touch(state.role,`Made scenario ${x.id} the content of plan v2`,'Plan edit');toast(`${x.id} is now the draft. Submit it for the standard review. Nothing is approved.`);render()}
+  else if(a==='submit'){state.plan='Submitted';state.stale='';audit(state.role,`Submitted plan v2 (${planHash()}) for review`,'Submission');render();toast('Submitted. The version is frozen for review.')}
+  else if(a==='approve'){state.plan='Approved';audit(state.role,`Approved plan v2, content hash ${planHash()}, scope Business`,'Approval');render();toast('Approved for this exact version. Any edit will invalidate it.')}
+  else if(a==='changes'){state.plan='Draft';audit(state.role,'Requested changes on plan v2','Review');render();toast('Changes requested. A new draft revision was opened.')}
+  else if(a==='newrule'){
+    $('#layer').insertAdjacentHTML('beforeend',`<div id="modal"><div class="box"><h2 style="font-size:18px;margin-bottom:14px">New rotation rule</h2>
+     <div class="field"><label for="rn">What should the rule say?</label><input class="inp" id="rn" placeholder="e.g. Nursing capstones run in Spring only"></div>
+     <div class="field"><label for="rc">Class</label><select class="inp" id="rc"><option>Hard academic</option><option>Soft academic</option><option>Economic</option></select></div>
+     <div class="field"><label>Rotation slots</label><div class="chips">${Object.keys(SLOT).map(k=>`<button type="button" class="toggle" data-act="slot">${SLOT[k]}</button>`).join('')}</div></div>
+     <div class="banner" style="margin-bottom:12px">${ic('check')}<span>Preview: affects 6 offerings, 0 new failures on the current plan. The rule starts as a draft and needs approval before it applies.</span></div>
+     <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" data-act="mclose">Cancel</button><button class="btn pri" data-act="saverule">Save rule</button></div></div></div>`);
+    $('#rn').focus();
+  }
+  else if(a==='slot'){t.classList.toggle('on')}
+  else if(a==='saverule'){const n=$('#rn').value.trim();if(!n){$('#rn').focus();return}const id='R-0'+(12+state.rulesExtra.length);state.rulesExtra.push({id,cls:$('#rc').value,text:n,scope:'Selected courses',status:'Draft',weight:$('#rc').value.startsWith('Hard')?undefined:3,res:[0,0,0,0],waivable:false});touch(state.role,`Proposed rule ${id}: ${n}`,'Rule');$('#modal').remove();render();toast(`Rule ${id} saved as a draft. It applies after approval, from the next plan version.`)}
+});
+document.addEventListener('input',e=>{
+  if(e.target.id==='red'){state.scn.target=+e.target.value;$('#redv').textContent=state.scn.target+'%';
+    clearTimeout(PAGES.h);PAGES.h=setTimeout(()=>{const y=$('#page').scrollTop;touch(state.role,`Set advisory target to ${state.scn.target}%`,'Scenario');render();$('#page').scrollTop=y;$('#red')?.focus()},120)}
+});
+document.addEventListener('change',e=>{if(e.target.id==='role'){state.role=e.target.value;render()}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if($('#modal'))$('#modal').remove();else if($('#sheet')){closeLayer();if(state.ask)renderAsk()}}});
+
+function render(){renderSide();renderTop();$('#page').innerHTML=(PAGES[state.page]||PAGES.overview)()}
+render();
+</script>

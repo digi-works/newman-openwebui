@@ -43,6 +43,12 @@ services:
       AI_DAILY_TURNS_PER_USER: "${AI_DAILY_TURNS_PER_USER:-300}"
       ADMISSION_GLOBAL: "${ADMISSION_GLOBAL:-12}"
       ADMISSION_PER_USER: "${ADMISSION_PER_USER:-2}"
+      # room booking emails and calendar invites, sent through Microsoft Graph (README: "Room booking emails and calendar invites")
+      MS_TENANT_ID: "${MS_TENANT_ID:-}"
+      MS_CLIENT_ID: "${MS_CLIENT_ID:-}"
+      MS_CLIENT_SECRET: "${MS_CLIENT_SECRET:-}"
+      MAIL_FROM: "${MAIL_FROM:-}"
+      BOOKING_MANAGER_EMAIL: "${BOOKING_MANAGER_EMAIL:-}"
       JOB_LEASE_SECONDS: "20"
       JOB_TEST_TYPES: "0"
       # first-time setup (scripts/bootstrap in README step 4)

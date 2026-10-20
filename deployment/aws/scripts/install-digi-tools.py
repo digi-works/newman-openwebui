@@ -28,8 +28,9 @@ UPDATE = {t.strip() for t in arg("--update", "").split(",") if t.strip()}
 PORTAL_URL = arg("--portal-url", "http://digiworks-portal:3000")
 key = env.get(arg("--key-name", "PORTAL_INTERNAL_KEY"), "")
 base = os.environ.get("OWUI_URL", "http://localhost:3001").rstrip("/")
-if UPDATE - {m for m in ("digi_rooms", "digi_bookings", "digi_approvals", "digi_memory", "digi_mcp")}:
-    sys.exit(f"--update: unknown module(s) {', '.join(sorted(UPDATE - {'digi_rooms', 'digi_bookings', 'digi_approvals', 'digi_memory', 'digi_mcp'}))}")
+KNOWN = {"digi_rooms", "digi_bookings", "digi_approvals", "digi_memory", "digi_mcp", "digi_events"}
+if UPDATE - KNOWN:
+    sys.exit(f"--update: unknown module(s) {', '.join(sorted(UPDATE - KNOWN))}")
 if not token or len(key) < 16:
     sys.exit("Need an admin token and PORTAL_INTERNAL_KEY in .env")
 
@@ -39,6 +40,7 @@ MODULES = [
     ("digi_approvals", "Digi Approvals (read only)", "digi_approvals.py", "The approval queue, read only."),
     ("digi_memory", "Digi Memory", "digi_memory.py", "Remember a note when the person asks (they confirm in Digi)."),
     ("digi_mcp", "Digi Connected Tools", "digi_mcp.py", "Tools from connected tool servers, called through Digi."),
+    ("digi_events", "Digi Events", "digi_events.py", "Calendar invites the person confirms in Digi; sent from the organisation's mailbox."),
 ]
 
 def call(method, path, body=None):
