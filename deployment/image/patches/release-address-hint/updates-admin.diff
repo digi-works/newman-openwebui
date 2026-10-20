@@ -1,0 +1,13 @@
+--- src/components/updates-admin.tsx (in the image)
++++ updates-admin.tsx
+@@ -45,7 +45,9 @@
+         {!id.installationId ? (
+           <>
+             <p className="text-sm text-muted-foreground">Connect this Digi to the platform with the single-use enrollment token you were given.</p>
+-            <div className="space-y-1.5"><label htmlFor="url" className="text-sm font-medium">Release address</label><Input id="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://releases.example.com" /></div>
++            <div className="space-y-1.5"><label htmlFor="url" className="text-sm font-medium">Release address</label><Input id="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste the address you were given" aria-describedby="url-hint" />
++              {/* there is no fixed release address: it comes with the enrollment token (QA DEF-22) */}
++              <p id="url-hint" className="text-xs text-muted-foreground">The https address that came with your enrollment token. If you do not have it, ask whoever gave you the token.</p></div>
+             <div className="space-y-1.5"><label htmlFor="tok" className="text-sm font-medium">Enrollment token</label><Input id="tok" type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} /></div>
+             <Button disabled={!url || !token || busy !== null} onClick={() => act("enroll", "/api/admin/updates/enroll", "POST", { url, token }, "Connected.")}>{busy === "enroll" && <Loader2 className="animate-spin" />} Connect</Button>
+           </>

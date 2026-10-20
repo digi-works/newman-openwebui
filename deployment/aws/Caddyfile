@@ -12,6 +12,17 @@
 		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 	}
 
+	# Digi is a signed-in app, so crawlers are asked to stay out; there is no sitemap. Answered here as plain text, not the portal's HTML 404 page.
+	handle /robots.txt {
+		header Content-Type "text/plain; charset=utf-8"
+		respond "User-agent: *
+Disallow: /
+" 200
+	}
+	handle /sitemap.xml {
+		respond "Not found" 404
+	}
+
 	# The tool API is for the Open WebUI server only (and still needs the shared key). Everyone else gets 403.
 	@internal path /api/internal/*
 	handle @internal {
@@ -20,6 +31,26 @@
 			reverse_proxy portal:3000
 		}
 		respond "Forbidden" 403
+	}
+
+	# API paths always answer in JSON, like the portal's own errors ({"error": ...}). The portal sends its HTML 404 page for an API
+	# path it has no route for, and an empty 405 for a method a route does not take; "code" tells these apart from "no such record".
+	handle /api/* {
+		reverse_proxy portal:3000 {
+			@no_route {
+				status 404
+				header Content-Type text/html*
+			}
+			handle_response @no_route {
+				header Content-Type "application/json"
+				respond `{"error":"No such API endpoint.","code":"no_such_endpoint"}` 404
+			}
+			@no_method status 405
+			handle_response @no_method {
+				header Content-Type "application/json"
+				respond `{"error":"This API endpoint does not accept {method}.","code":"method_not_allowed"}` 405
+			}
+		}
 	}
 
 	reverse_proxy portal:3000

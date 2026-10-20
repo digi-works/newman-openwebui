@@ -1,0 +1,36 @@
+--- src/components/history-list.tsx (in the image)
++++ history-list.tsx
+@@ -15,6 +15,8 @@
+ export function HistoryList({ agents }: { agents: Agent[] }) {
+   const { chats, hydrated } = useStore();
+   const [q, setQ] = useState("");
++  // Deleting asks first (QA DEF-29): the trash button turns the row into "Delete this chat?", and only "Yes, delete" deletes.
++  const [confirming, setConfirming] = useState<string | null>(null);
+   const name = (id: string) => agents.find((a) => a.id === id)?.name ?? "Agent";
+ 
+   const groups = new Map<string, ReturnType<typeof visibleChats>>();
+@@ -52,10 +54,20 @@
+                   <Link href={`/chat/${c.id}`} className="block truncate text-sm font-medium after:absolute after:inset-0 after:content-['']">{c.title}</Link>
+                   <div className="truncate text-xs text-muted-foreground">{name(c.agentId)}</div>
+                 </div>
+-                <time className="text-xs text-muted-foreground">{timeLabel(c.updatedAt)}</time>
+-                <Button variant="ghost" size="icon-sm" className="relative z-10 opacity-0 focus-visible:opacity-100 group-hover:opacity-100" aria-label={`Delete ${c.title}`} onClick={() => deleteChat(c.id)}>
+-                  <Trash2 />
+-                </Button>
++                {confirming === c.id ? (
++                  <div className="relative z-10 flex items-center gap-2">
++                    <span className="hidden text-xs text-muted-foreground sm:inline">Delete this chat? This cannot be undone.</span>
++                    <Button size="sm" variant="destructive" aria-label={`Yes, delete ${c.title}`} onClick={() => { setConfirming(null); deleteChat(c.id); }}>Yes, delete</Button>
++                    <Button size="sm" variant="outline" autoFocus onClick={() => setConfirming(null)}>Keep it</Button>
++                  </div>
++                ) : (
++                  <>
++                    <time className="text-xs text-muted-foreground">{timeLabel(c.updatedAt)}</time>
++                    <Button variant="ghost" size="icon-sm" className="relative z-10 opacity-0 focus-visible:opacity-100 group-hover:opacity-100" aria-label={`Delete ${c.title}`} onClick={() => setConfirming(c.id)}>
++                      <Trash2 />
++                    </Button>
++                  </>
++                )}
+               </div>
+             ))}
+           </section>
