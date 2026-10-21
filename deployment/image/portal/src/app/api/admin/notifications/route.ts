@@ -5,7 +5,7 @@ import { requirePermission } from "@/lib/session";
 
 const fail = (error: string, status: number) => Response.json({ error }, { status });
 
-/** Room booking emails and calendar invites. People who approve room requests manage them. */
+/** Room booking emails. People who approve room requests manage them. */
 export async function GET() {
   const user = await requirePermission(P.bookingsApprove);
   if (!user) return fail("You do not have permission to change this.", 403);
@@ -15,15 +15,15 @@ export async function GET() {
 export async function PUT(req: Request) {
   const user = await requirePermission(P.bookingsApprove);
   if (!user) return fail("You do not have permission to change this.", 403);
-  const b = (await req.json().catch(() => ({}))) as { bookingEmails?: unknown; managerEmails?: unknown; eventInvites?: unknown };
-  if (typeof b.bookingEmails !== "boolean" || typeof b.eventInvites !== "boolean" || typeof b.managerEmails !== "string") return fail("Invalid request.", 400);
+  const b = (await req.json().catch(() => ({}))) as { bookingEmails?: unknown; managerEmails?: unknown };
+  if (typeof b.bookingEmails !== "boolean" || typeof b.managerEmails !== "string") return fail("Invalid request.", 400);
   const managerEmails = parseEmails(b.managerEmails);
   const bad = managerEmails.filter((e) => !validEmail(e));
   if (bad.length) return fail(`Not an email address: ${bad.join(", ")}`, 400);
   if (managerEmails.length > 10) return fail("Enter at most 10 room manager emails.", 400);
   if (b.bookingEmails && !managerEmails.length) return fail("Enter the room manager email that should receive new requests.", 400);
-  if ((b.bookingEmails || b.eventInvites) && !mailConfigured()) return fail("Email is not set up on this server yet, so it cannot be switched on. See the deployment README.", 409);
-  const settings = { bookingEmails: b.bookingEmails, managerEmails, eventInvites: b.eventInvites };
+  if (b.bookingEmails && !mailConfigured()) return fail("Email is not set up on this server yet, so it cannot be switched on. See the deployment README.", 409);
+  const settings = { bookingEmails: b.bookingEmails, managerEmails };
   await saveNotificationSettings(user.tenantId, user.id, settings);
   return Response.json({ settings });
 }

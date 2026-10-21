@@ -23,7 +23,7 @@ describe("the events.invite tool", () => {
 
   test("with email not set up, preparing it is refused with a message the person can act on", async () => {
     await assert.rejects(tool!.prepare!(actor, { title: "Review", date: "2030-01-01", start_time: "14:00", end_time: "15:00", attendees: "a@x.edu" }),
-      (e: unknown) => e instanceof ToolError && e.status === 409 && /switched off.*Settings > Notifications/.test(e.message));
+      (e: unknown) => e instanceof ToolError && e.status === 409 && /email is not set up/.test(e.message));
   });
 
   test("every tool still declares a permission and a module (the registry's own check ran at import)", () => {

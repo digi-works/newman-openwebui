@@ -15,7 +15,7 @@ import { accessFor } from "./session";
  * Emails are queued as jobs in the same transaction as the booking change, so they go out only if the change was saved, are retried if
  * Microsoft is briefly unavailable, and never twice (one idempotency key per booking and kind). The in-app bell is unchanged.
  */
-export type NotificationSettings = { bookingEmails: boolean; managerEmails: string[]; eventInvites: boolean };
+export type NotificationSettings = { bookingEmails: boolean; managerEmails: string[] };
 export type BookingEmailKind = "created" | BookingUpdate;
 
 const EMAIL = /^[^@\s,;<>]+@[^@\s,;<>]+\.[A-Za-z]{2,}$/;
@@ -25,10 +25,14 @@ export const validEmail = (v: string) => EMAIL.test(v);
 /** BOOKING_MANAGER_EMAIL is the starting value until an admin saves the setting. */
 const defaultManagers = () => parseEmails(process.env.BOOKING_MANAGER_EMAIL || "").filter(validEmail);
 
+/**
+ * Until an admin saves the setting, booking emails are on wherever they can work: email is set up and there is a room manager inbox.
+ * Before, they started off, and a server with working email sent no booking emails until someone found the switch.
+ */
 export async function readSettings(c: PoolClient): Promise<NotificationSettings> {
-  const r = (await c.query("select booking_emails_enabled, booking_manager_emails, event_invites_enabled from notification_settings")).rows[0];
-  if (!r) return { bookingEmails: false, managerEmails: defaultManagers(), eventInvites: false };
-  return { bookingEmails: r.booking_emails_enabled, managerEmails: parseEmails(r.booking_manager_emails).filter(validEmail), eventInvites: r.event_invites_enabled };
+  const r = (await c.query("select booking_emails_enabled, booking_manager_emails from notification_settings")).rows[0];
+  if (!r) { const managerEmails = defaultManagers(); return { bookingEmails: mailConfigured() && managerEmails.length > 0, managerEmails }; }
+  return { bookingEmails: r.booking_emails_enabled, managerEmails: parseEmails(r.booking_manager_emails).filter(validEmail) };
 }
 
 export const getNotificationSettings = (tenantId: string) => withTenant(tenantId, readSettings);
@@ -36,12 +40,12 @@ export const getNotificationSettings = (tenantId: string) => withTenant(tenantId
 export async function saveNotificationSettings(tenantId: string, userId: string, s: NotificationSettings) {
   await withTenant(tenantId, async (c) => {
     await c.query(
-      `insert into notification_settings (tenant_id, booking_emails_enabled, booking_manager_emails, event_invites_enabled, updated_by)
-       values ($1, $2, $3, $4, $5)
-       on conflict (tenant_id) do update set booking_emails_enabled = $2, booking_manager_emails = $3, event_invites_enabled = $4, updated_by = $5, updated_at = now()`,
-      [tenantId, s.bookingEmails, s.managerEmails.join(", "), s.eventInvites, userId],
+      `insert into notification_settings (tenant_id, booking_emails_enabled, booking_manager_emails, updated_by)
+       values ($1, $2, $3, $4)
+       on conflict (tenant_id) do update set booking_emails_enabled = $2, booking_manager_emails = $3, updated_by = $4, updated_at = now()`,
+      [tenantId, s.bookingEmails, s.managerEmails.join(", "), userId],
     );
-    await auditEvent(c, { tenantId, userId, action: "settings.notifications", entityType: "tenant", entityId: tenantId, metadata: { bookingEmails: s.bookingEmails, managers: s.managerEmails.length, eventInvites: s.eventInvites } });
+    await auditEvent(c, { tenantId, userId, action: "settings.notifications", entityType: "tenant", entityId: tenantId, metadata: { bookingEmails: s.bookingEmails, managers: s.managerEmails.length } });
   });
 }
 
@@ -83,8 +87,9 @@ export function signDecisionLink(claims: Omit<LinkClaims, "exp">): string {
 export function verifyDecisionLink(token: string): LinkClaims | null {
   const [body, sig] = token.split(".");
   if (!body || !sig) return null;
-  const want = createHmac("sha256", linkKey()).update(body).digest();
-  const got = Buffer.from(sig, "base64url");
+  // compared as text: decoding base64url ignores the spare bits of the last character, so two spellings would pass
+  const want = Buffer.from(createHmac("sha256", linkKey()).update(body).digest("base64url"));
+  const got = Buffer.from(sig);
   if (got.length !== want.length || !timingSafeEqual(got, want)) return null;
   try {
     const c = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as LinkClaims;

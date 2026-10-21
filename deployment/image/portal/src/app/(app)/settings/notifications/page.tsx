@@ -16,7 +16,7 @@ export default async function NotificationsPage() {
   const viewer = await requirePermission(P.bookingsApprove);
   if (!viewer) redirect("/settings");
   const live = authLive();
-  const settings = live ? await getNotificationSettings(viewer.tenantId) : { bookingEmails: false, managerEmails: [], eventInvites: false };
+  const settings = live ? await getNotificationSettings(viewer.tenantId) : { bookingEmails: false, managerEmails: [] };
   // the last few email jobs, so a wrong secret or a full mailbox shows here rather than only in the server log
   const log: EmailLogItem[] = live
     ? (await withTenant(viewer.tenantId, (c) => c.query("select created_at, payload, status, error from jobs where type = 'email.booking' order by created_at desc limit 8"))).rows

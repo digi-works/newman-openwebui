@@ -81,7 +81,7 @@ function fakeClient(settingsRow: Record<string, unknown> | null) {
   } as unknown as PoolClient;
   return { c, calls, inserts: () => calls.filter((x) => x.sql.includes("insert into jobs")) };
 }
-const ON = { booking_emails_enabled: true, booking_manager_emails: "rooms@x.edu", event_invites_enabled: false };
+const ON = { booking_emails_enabled: true, booking_manager_emails: "rooms@x.edu" };
 const MAIL_ENV = { MS_TENANT_ID: "t", MS_CLIENT_ID: "c", MS_CLIENT_SECRET: "s", MAIL_FROM: "rooms@x.edu" };
 
 describe("queueing booking emails (inside the booking transaction)", () => {
@@ -92,13 +92,20 @@ describe("queueing booking emails (inside the booking transaction)", () => {
     await queueBookingEmail(f.c, TENANT, "u1", BOOKING, "created");
     assert.equal(f.inserts().length, 0);
   });
-  test("nothing is queued while the switch is off, or was never saved", async () => {
+  test("nothing is queued while the switch is off, or was never saved and there is no room manager inbox", async () => {
     Object.assign(process.env, MAIL_ENV);
     for (const row of [{ ...ON, booking_emails_enabled: false }, null]) {
       const f = fakeClient(row);
       await queueBookingEmail(f.c, TENANT, "u1", BOOKING, "approved");
       assert.equal(f.inserts().length, 0);
     }
+  });
+  test("never saved, with email set up and BOOKING_MANAGER_EMAIL: on from the start, so approvals are emailed", async () => {
+    Object.assign(process.env, MAIL_ENV, { BOOKING_MANAGER_EMAIL: "rooms@x.edu" });
+    const f = fakeClient(null);
+    await queueBookingEmail(f.c, TENANT, "u1", BOOKING, "approved");
+    assert.equal(f.inserts().length, 1);
+    delete process.env.BOOKING_MANAGER_EMAIL;
   });
   test("when on, one job is queued with the booking, kind, actor and a per-booking-and-kind idempotency key", async () => {
     Object.assign(process.env, MAIL_ENV);
@@ -121,8 +128,10 @@ describe("queueing booking emails (inside the booking transaction)", () => {
   });
   test("BOOKING_MANAGER_EMAIL is the starting manager list until settings are saved; saved settings win", async () => {
     process.env.BOOKING_MANAGER_EMAIL = "Rooms@X.edu, bad, other@x.edu";
-    assert.deepEqual(await mod.readSettings(fakeClient(null).c), { bookingEmails: false, managerEmails: ["rooms@x.edu", "other@x.edu"], eventInvites: false });
-    assert.deepEqual(await mod.readSettings(fakeClient({ ...ON, booking_manager_emails: "a@x.edu; nope", event_invites_enabled: true }).c), { bookingEmails: true, managerEmails: ["a@x.edu"], eventInvites: true });
+    // email is not set up in this test, so the unsaved switch reads as off
+    assert.deepEqual(await mod.readSettings(fakeClient(null).c), { bookingEmails: false, managerEmails: ["rooms@x.edu", "other@x.edu"] });
+    assert.deepEqual(await mod.readSettings(fakeClient({ ...ON, booking_manager_emails: "a@x.edu; nope" }).c), { bookingEmails: true, managerEmails: ["a@x.edu"] });
+    assert.deepEqual(await mod.readSettings(fakeClient({ ...ON, booking_emails_enabled: false }).c), { bookingEmails: false, managerEmails: ["rooms@x.edu"] });
     delete process.env.BOOKING_MANAGER_EMAIL;
   });
 });
@@ -134,7 +143,7 @@ describe("sending booking emails (the background job)", () => {
     const out = await sendBookingEmails(
       { tenantId: TENANT, payload: { bookingId: BOOKING, kind: o.kind }, checkpoint: o.checkpoint ?? {}, save: async (cp) => { saves.push(cp); } },
       {
-        settings: async () => ({ bookingEmails: o.on ?? true, managerEmails: o.managers ?? ["rooms@x.edu"], eventInvites: false }),
+        settings: async () => ({ bookingEmails: o.on ?? true, managerEmails: o.managers ?? ["rooms@x.edu"] }),
         booking: async () => (o.b === undefined ? booking() : o.b),
         send: async (m) => { const e = o.fail?.(m.to[0]); if (e) throw e; sent.push(m); },
       },

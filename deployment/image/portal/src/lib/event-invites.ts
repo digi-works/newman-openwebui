@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { auditEvent } from "./audit";
-import { getNotificationSettings, parseEmails, validEmail } from "./booking-emails";
+import { parseEmails, validEmail } from "./booking-emails";
 import { withTenant } from "./digi-db";
 import { inviteEmail, type InviteEvent } from "./email-templates";
 import { mailConfigured, mailFrom, sendMime } from "./mail";
@@ -33,11 +33,12 @@ export function normalizeInvite(raw: RawInvite): InviteInput {
   return { title, date: raw.date, start: hhmm(s), end: hhmm(e), attendees, location: raw.location.trim().slice(0, 200), description: raw.description.trim().slice(0, 1000) };
 }
 
-/** Everything normalizeInvite checks, plus the organisation's switch and that the start is still ahead in campus time. */
+/**
+ * Everything normalizeInvite checks, plus that email is set up and the start is still ahead in campus time. There is no organisation
+ * switch: the person asks for each invite and confirms it in chat, and can stop it there.
+ */
 export async function checkInvite(tenantId: string, raw: RawInvite): Promise<InviteInput> {
-  if (!mailConfigured() || !(await getNotificationSettings(tenantId)).eventInvites) {
-    throw new InviteError("Calendar invites are switched off. Someone who approves room requests can switch them on in Settings > Notifications.");
-  }
+  if (!mailConfigured()) throw new InviteError("Calendar invites cannot be sent yet: email is not set up on this server.");
   const input = normalizeInvite(raw);
   const past = await withTenant(tenantId, async (c) => {
     const tz = ((await c.query("select configuration from tenants where id = $1", [tenantId])).rows[0]?.configuration?.timezone as string) || "America/Chicago";
