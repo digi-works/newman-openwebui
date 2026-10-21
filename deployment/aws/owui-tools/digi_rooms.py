@@ -2,7 +2,7 @@
 title: Digi Rooms
 author: Digiworks
 description: Room request form, available-room search, single-room availability check and room list for Digi (Newman University). Calls the Digi tool gateway; Digi decides who may use it.
-version: 0.3.0
+version: 0.4.0
 """
 
 import json
@@ -107,15 +107,15 @@ class Tools:
   <div class="head"><b>Room request</b><span>Step 1 of 2</span></div>
   <form id="f" class="body" novalidate>
     <div class="row"><div><label for="purpose">What is the booking for?</label>
-      <input id="purpose" maxlength="120" placeholder="e.g. Book club discussion" autocomplete="off"></div></div>
+      <input id="purpose" maxlength="200" placeholder="e.g. Study group, club meeting" autocomplete="off"></div></div>
     <div class="row r3">
       <div><label for="date">Date</label><input id="date" type="date"></div>
-      <div><label for="start">Start</label><input id="start" type="time"></div>
-      <div><label for="end">End</label><input id="end" type="time"></div>
+      <div><label for="start">Start</label><input id="start" type="time" value="14:00"></div>
+      <div><label for="end">End</label><input id="end" type="time" value="15:00"></div>
     </div>
     <div class="row r2">
       <div><label for="people">How many people?</label>
-        <div style="position:relative"><input id="people" type="number" min="1" max="500" value="12">
+        <div style="position:relative"><input id="people" type="number" min="1" max="500" value="6">
         <div style="position:absolute;right:8px;top:7px;display:flex;gap:6px">
           <button type="button" class="ghost" id="minus" style="padding:4px 12px" aria-label="Fewer people">&minus;</button>
           <button type="button" class="ghost" id="plus" style="padding:4px 12px" aria-label="More people">+</button></div></div></div>
@@ -123,13 +123,14 @@ class Tools:
         <select id="building"><option value="">No preference</option>{options}</select></div>
     </div>
     <div class="row" style="margin-bottom:0"><div><label>Anything the room needs?</label><div class="chips">{chips}</div></div></div>
-    <div class="foot"><button type="submit" class="primary" id="go" disabled>Find Available Rooms</button></div>
+    <div class="foot"><button type="submit" class="primary" id="go" disabled>Find available rooms</button></div>
   </form>
 </div>"""
         script = r"""
 const $ = (id) => document.getElementById(id);
 const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-$("date").min = today;
+// the same starting values as the Request a room page: today, 14:00 to 15:00, 6 people
+$("date").min = today; $("date").value = today;
 const needs = new Set();
 function valid() {
   const ok = $("purpose").value.trim() && $("date").value >= today && $("start").value && $("end").value && $("end").value > $("start").value && Number($("people").value) >= 1;
