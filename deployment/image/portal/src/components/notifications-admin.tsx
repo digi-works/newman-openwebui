@@ -4,11 +4,12 @@ import { useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import type { NotificationSettings } from "@/lib/booking-emails";
 
 export type EmailLogItem = { at: string; kind: string; status: string; error: string | null };
 
-/** Settings > Notifications: room booking emails, the room manager inbox, calendar invites, and a test email. */
+/** Settings > Notifications: room booking emails, the room manager inbox, and a test email. Calendar invites have no switch: they go out whenever email is set up. */
 export function NotificationsAdmin({ initial, mail, log }: { initial: NotificationSettings; mail: { configured: boolean; from: string }; log: EmailLogItem[] }) {
   const [s, setS] = useState(initial);
   const [managers, setManagers] = useState(initial.managerEmails.join(", "));
@@ -19,7 +20,7 @@ export function NotificationsAdmin({ initial, mail, log }: { initial: Notificati
     setBusy(what); setMsg(null);
     const res = await fetch("/api/admin/notifications", {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bookingEmails: next.bookingEmails, eventInvites: next.eventInvites, managerEmails: next.managerText ?? managers }),
+      body: JSON.stringify({ bookingEmails: next.bookingEmails, managerEmails: next.managerText ?? managers }),
     }).catch(() => null);
     const out = res ? await res.json().catch(() => ({})) : {};
     setBusy(null);
@@ -41,7 +42,7 @@ export function NotificationsAdmin({ initial, mail, log }: { initial: Notificati
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Notifications</h1>
-        <p className="text-sm text-muted-foreground">Emails Digi sends about room bookings and events. The notification bell in Digi works either way.</p>
+        <p className="text-sm text-muted-foreground">Emails Digi sends about room bookings. Calendar invites Digi sends from chat need no switch: the person confirms each one there. The notification bell in Digi works either way.</p>
       </div>
 
       {!mail.configured && (
@@ -60,9 +61,10 @@ export function NotificationsAdmin({ initial, mail, log }: { initial: Notificati
                 : "Off. Nobody is emailed about room bookings."}
             </p>
           </div>
-          <Button size="sm" variant={s.bookingEmails ? "outline" : "default"} disabled={busy !== null || (!mail.configured && !s.bookingEmails)} onClick={() => save({ ...s, bookingEmails: !s.bookingEmails }, "booking")}>
-            {spin("booking")} {s.bookingEmails ? "Switch off" : "Switch on"}
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            {spin("booking")}
+            <Switch aria-label="Room booking email notifications" checked={s.bookingEmails} disabled={busy !== null || (!mail.configured && !s.bookingEmails)} onCheckedChange={(on) => save({ ...s, bookingEmails: on }, "booking")} />
+          </div>
         </div>
         <div className="space-y-1.5">
           <label htmlFor="managers" className="font-medium">Room manager email</label>
@@ -71,22 +73,6 @@ export function NotificationsAdmin({ initial, mail, log }: { initial: Notificati
             <Button variant="outline" disabled={busy !== null || managers.trim() === s.managerEmails.join(", ")} onClick={() => save(s, "managers")}>{spin("managers")} Save</Button>
           </div>
           <p className="text-xs text-muted-foreground">Receives every new request. Separate several with commas. To approve or reject from the email, this address needs a Digi account that can approve room requests.</p>
-        </div>
-      </section>
-
-      <section className="space-y-2 rounded-2xl border bg-card p-5 text-sm">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="font-medium">Calendar invites</div>
-            <p className="mt-1 text-muted-foreground">
-              {s.eventInvites
-                ? "On. When someone asks Digi to schedule an event and confirms it, the attendees get a calendar invite with Yes, Maybe and No."
-                : "Off. Digi cannot send calendar invites."}
-            </p>
-          </div>
-          <Button size="sm" variant={s.eventInvites ? "outline" : "default"} disabled={busy !== null || (!mail.configured && !s.eventInvites)} onClick={() => save({ ...s, eventInvites: !s.eventInvites }, "invites")}>
-            {spin("invites")} {s.eventInvites ? "Switch off" : "Switch on"}
-          </Button>
         </div>
       </section>
 

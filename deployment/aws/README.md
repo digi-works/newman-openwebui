@@ -73,13 +73,13 @@ If something fails:
 | Nobody can sign in (e.g. the only Admin is locked out) | Reset the password from the server: see **Reset a password from the server** under section 6 |
 
 ## Room booking emails and calendar invites (optional)
-Digi can email people about room bookings and send calendar invites, from one Microsoft 365 mailbox (`MAIL_FROM`). It is off until someone switches it on in **Settings > Notifications**; the notification bell in Digi works either way.
+Digi can email people about room bookings and send calendar invites, from one Microsoft 365 mailbox (`MAIL_FROM`). Once the `MS_*` and `MAIL_FROM` values are set, room booking emails are **on** as long as `BOOKING_MANAGER_EMAIL` is set too, and can be switched off with the switch in **Settings > Notifications**; the notification bell in Digi works either way.
 
 **What happens when it is on**
 - **New room request:** the room manager inbox gets an email with **Approve** and **Reject** buttons, and the requester gets "request received".
 - **Approve / Reject:** each button opens a page in Digi where the manager adds a note and presses **Confirm decision**. Opening the link alone changes nothing (mail scanners open links too). The link works for 14 days and only while the request is still waiting. The decision is saved as the **Digi account with the manager's email address**, so that account must exist and be able to approve room requests (role **Staff** or **Admin**), and the usual rule applies: nobody decides their own request. Managers can still decide on the Bookings page as before.
 - **Approved, declined, cancelled by someone else, replaced by a priority request, or expired:** the requester gets an email.
-- **Calendar invites (separate switch):** when someone asks Digi to schedule an event and invite people, Digi shows a confirmation card; after **Confirm**, everyone listed (and the person who asked) gets a real calendar invite with Yes / Maybe / No. Replies go to the `MAIL_FROM` mailbox. This does not reserve a room.
+- **Calendar invites (always on once email is set up, no switch):** when someone asks Digi to schedule an event and invite people, Digi shows a confirmation card; after **Confirm**, everyone listed (and the person who asked) gets a real calendar invite with Yes / Maybe / No. Nothing is sent without that Confirm, and the person can stop it there. Replies go to the `MAIL_FROM` mailbox. This does not reserve a room.
 - Emails are sent in the background and retried for a few minutes if Microsoft is briefly unavailable; each email goes out once. The last few results (sent or the error) are listed in Settings > Notifications.
 
 **1. Microsoft (once, by your Microsoft 365 admin).** In the Microsoft Entra admin center:
@@ -96,7 +96,7 @@ docker compose up -d
 
 **3. Digi.** Sign in as an Admin or Staff member and open **Settings > Notifications**:
 1. **Send me a test email**: it goes to your own address. If it fails, the message says what Microsoft answered (see the table below).
-2. Check the **Room manager email**, then **Switch on** room booking email notifications, and calendar invites if you want them.
+2. Check the **Room manager email**, and that the **Room booking email notifications** switch is on (green).
 3. Make sure each room manager address has a Digi account with the Staff (or Admin) role: Settings > Users.
 4. Try it: as a Student account, request a room. The manager should get the email within a few seconds; use **Reject** with a note and check the student gets "declined".
 
@@ -156,7 +156,16 @@ Run from the `deployment/aws` folder. `.env` and the data volumes are never touc
 4. If the update changed Digi's instructions (listed under **This update**), add the new lines by hand in Open WebUI > Workspace > Models > Digi > System prompt. `connect-owui.py` never changes the prompt of an existing Digi.
 5. Check: sign in, open **Settings > AI connection** (Open WebUI should show as connected), and ask Digi a question in **New chat**.
 
-### This update: room booking emails and calendar invites
+### This update: same room form everywhere, booking email fixes
+- Portal image:
+  - The **Request a room** page (Bookings > + Request a room) now has the same form as the one Digi shows in chat.
+  - **Settings > Notifications** has a sliding on/off switch for room booking emails, and no Calendar invites option: invites are sent whenever email is set up, after the person confirms them in chat.
+  - Room booking emails now start **on** when email and `BOOKING_MANAGER_EMAIL` are set, unless someone already switched them off. Before, they started off, so requests and approvals were not emailed until someone found the switch.
+  - Approve / Reject links in manager emails are checked strictly.
+  - No database migration.
+- Tool modules: `digi_rooms` (the chat room form starts at today, 2 to 3 pm, 6 people, like the page). Run step 3 with `--update digi_rooms`.
+
+### Earlier update: room booking emails and calendar invites
 - Portal image: **Settings > Notifications** (switch room booking emails and calendar invites on or off, room manager inbox, test email, recent email results); room manager emails with Approve / Reject; requester emails for every change; calendar invites from Digi. One database migration (`0014_booking_emails.sql`) runs by itself at start. Nothing is emailed until someone switches it on.
 - The portal is now built from source kept in this repo (`deployment/image/portal`, see **Building the portal image**); all the earlier QA fixes are part of it. The image runs exactly as before.
 - `docker-compose.yml` and `.env.example`: new optional **Email** values (`MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MAIL_FROM`, `BOOKING_MANAGER_EMAIL`). Copy that block from `.env.example` into your `.env` and fill it in when you have the Microsoft values; then follow **Room booking emails and calendar invites**.
