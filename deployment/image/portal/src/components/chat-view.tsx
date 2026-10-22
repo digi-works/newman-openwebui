@@ -34,7 +34,7 @@ export function ChatView({ agents, initial, live }: { agents: Agent[]; initial: 
   const agent = agents.find((a) => a.id === initial.agentId);
   const [messages, setMessages] = useState<Message[]>(() => initial.messages.map(toUi));
   const [input, setInput] = useState("");
-  const abortRef = useRef<AbortController | null>(null);
+  const stopRef = useRef<(() => void) | null>(null);
   const sentPending = useRef<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const sendRef = useRef<(t: string) => void>(() => {});
@@ -66,8 +66,17 @@ export function ChatView({ agents, initial, live }: { agents: Agent[]; initial: 
     setMessages((ms) => [...ms, { id: uid, role: "user", text }, { id: aid, role: "assistant", text: "", status: "working" }]);
     setInput("");
     const ctl = new AbortController();
-    abortRef.current = ctl;
     let acc = "";
+    // Stop tells the server how much of the answer was shown, so it saves only that, then drops the stream (QA DEF-50).
+    // Before "meta" there is no saved id to stop yet, so the stop waits for it.
+    let stopAsked = false;
+    const stopNow = () => {
+      if (live && SERVER_ID.test(aid)) {
+        void fetch(`/api/conversations/${chatId}/messages/${aid}/stop`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shown: acc.length }), keepalive: true }).catch(() => undefined);
+      }
+      ctl.abort();
+    };
+    stopRef.current = () => { if (!live || SERVER_ID.test(aid)) stopNow(); else stopAsked = true; };
     let waiting = false;
     const patch = (p: Partial<Message>) => patchMsg(aid, p);
     const clearWait = () => { if (waiting) { waiting = false; patch({ toolLabel: undefined }); } };
@@ -79,6 +88,7 @@ export function ChatView({ agents, initial, live }: { agents: Agent[]; initial: 
           setMessages((ms) => ms.map((m) => (m.id === uid ? { ...m, id: ev.userMessageId } : m.id === tmpId ? { ...m, id: ev.assistantMessageId } : m)));
           aid = ev.assistantMessageId;
           void refreshChats();
+          if (stopAsked) stopNow();
         } else if (ev.type === "queued") {
           waiting = true;
           patch({ toolLabel: ev.position > 1 ? `Digi is busy. ${ev.position - 1} ahead of you…` : "Digi is busy. You are next…" });
@@ -95,7 +105,7 @@ export function ChatView({ agents, initial, live }: { agents: Agent[]; initial: 
       if ((e as Error).name === "AbortError") patch({ status: "stopped", toolLabel: undefined });
       else patch({ status: "done", toolLabel: undefined, text: acc || `Sorry, I couldn’t get an answer. ${(e as Error).message || "Try again."}` });
     } finally {
-      abortRef.current = null;
+      stopRef.current = null;
       void refreshChats();
     }
   }
@@ -191,7 +201,7 @@ export function ChatView({ agents, initial, live }: { agents: Agent[]; initial: 
               className="max-h-36 min-h-9 resize-none border-0 bg-transparent px-1 py-2 shadow-none focus-visible:ring-0 dark:bg-transparent"
             />
             {streaming ? (
-              <Button type="button" size="icon" aria-label="Stop" onClick={() => abortRef.current?.abort()}><Square className="fill-current" /></Button>
+              <Button type="button" size="icon" aria-label="Stop" onClick={() => stopRef.current?.()}><Square className="fill-current" /></Button>
             ) : (
               <Button type="submit" size="icon" aria-label="Send" disabled={!input.trim()}><ArrowUp /></Button>
             )}

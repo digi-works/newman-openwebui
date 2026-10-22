@@ -2,7 +2,7 @@
 title: Digi Bookings
 author: Digiworks
 description: A person's bookings, plus requests and cancellations that Digi prepares and the person confirms in Digi.
-version: 0.2.1
+version: 0.3.0
 """
 
 from typing import Optional
@@ -63,6 +63,7 @@ class Tools:
         """
         Prepare a room request when the person picks a room. This does NOT submit it: Digi shows the person a confirmation card and the request is
         only sent when they press Confirm there. Never tell the person it is submitted; tell them to check the card and press Confirm.
+        The card only exists once this is called: never mention a card without calling it, and call it again if they cannot see the card.
         :param room: Exact room name chosen.
         :param purpose: What the booking is for.
         :param date: Date as YYYY-MM-DD.

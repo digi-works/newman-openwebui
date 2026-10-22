@@ -7,14 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentAvatar } from "@/components/agent-avatar";
-import { deleteChat, relativeDay, timeLabel, useStore, visibleChats } from "@/lib/store";
+import { deleteChat, refreshChats, relativeDay, timeLabel, useStore, visibleChats } from "@/lib/store";
 import type { Agent } from "@/lib/types";
 
 const ORDER = ["Today", "Yesterday", "Earlier this week", "Older"];
 
 export function HistoryList({ agents }: { agents: Agent[] }) {
-  const { chats, hydrated } = useStore();
+  const { chats, hydrated, failed } = useStore();
   const [q, setQ] = useState("");
+  const [retrying, setRetrying] = useState(false);
+  const retry = async () => { setRetrying(true); await refreshChats(); setRetrying(false); };
   // Deleting asks first (QA DEF-29): the trash button turns the row into "Delete this chat?", and only "Yes, delete" deletes.
   const [confirming, setConfirming] = useState<string | null>(null);
   const name = (id: string) => agents.find((a) => a.id === id)?.name ?? "Agent";
@@ -37,9 +39,17 @@ export function HistoryList({ agents }: { agents: Agent[] }) {
         </div>
       </div>
 
+      {/* A failed load is an error, not an empty account (QA DEF-52); the list already shown, if any, stays below it. */}
+      {hydrated && failed && (
+        <div role="alert" className="flex flex-col items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-center text-sm text-destructive sm:flex-row sm:justify-between sm:text-left">
+          <span>Your conversations could not be loaded. Check your connection and try again.</span>
+          <Button size="sm" variant="outline" disabled={retrying} onClick={() => void retry()}>{retrying ? "Trying again…" : "Try again"}</Button>
+        </div>
+      )}
+
       {!hydrated ? (
         <div className="space-y-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
-      ) : groups.size === 0 ? (
+      ) : failed && visibleChats(chats).length === 0 ? null : groups.size === 0 ? (
         <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
           {q ? `No conversations match “${q}”.` : "No conversations yet. Pick a worker to start one."}
         </div>

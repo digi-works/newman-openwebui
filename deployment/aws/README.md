@@ -162,8 +162,13 @@ Run from the `deployment/aws` folder. `.env` and the data volumes are never touc
   - **Settings > Notifications** has a sliding on/off switch for room booking emails, and no Calendar invites option: invites are sent whenever email is set up, after the person confirms them in chat.
   - Room booking emails now start **on** when email and `BOOKING_MANAGER_EMAIL` are set, unless someone already switched them off. Before, they started off, so requests and approvals were not emailed until someone found the switch.
   - Approve / Reject links in manager emails are checked strictly.
+  - **Stop** in chat ends the answer on the server too, and only what was shown is saved, so a reload or History no longer reveals an answer that was stopped (QA DEF-50).
+  - **History** says when your conversations could not be loaded and offers Try again, instead of showing "No conversations yet" (QA DEF-52).
+  - If Digi tells someone to press Confirm but no confirmation card was prepared, the answer now says so and how to get the card, instead of leaving them looking for it.
   - No database migration.
-- Tool modules: `digi_rooms` (the chat room form starts at today, 2 to 3 pm, 6 people, like the page). Run step 3 with `--update digi_rooms`.
+- Tool modules: `digi_rooms` (the chat room form starts at today, 2 to 3 pm, 6 people, like the page; Digi looks up one room by name, so "the capacity of St. John's Chapel" or "Performance Hall" is answered instead of "not listed", and a room list covers every room and says when it shows only part of them, QA DEF-49) and `digi_bookings` (request_room says the card only exists once it is called). Run step 3 with `--update digi_rooms,digi_bookings`.
+- Digi's instructions: add this line under "Honesty rules" (step 4):
+  > - A confirmation card exists only when request_room, cancel_booking or another tool that prepares an action was called in this reply. Never say a card is shown, or tell someone to press Confirm, without calling that tool in this reply. If they ask where the card is, or it is not showing, call the tool again with the same details.
 
 ### Earlier update: room booking emails and calendar invites
 - Portal image: **Settings > Notifications** (switch room booking emails and calendar invites on or off, room manager inbox, test email, recent email results); room manager emails with Approve / Reject; requester emails for every change; calendar invites from Digi. One database migration (`0014_booking_emails.sql`) runs by itself at start. Nothing is emailed until someone switches it on.
