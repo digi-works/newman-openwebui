@@ -13,7 +13,7 @@ import { streamReply } from "@/lib/chat-transport";
 import { renderMarkdown } from "@/lib/markdown";
 import type { ChatDetail, ChatMessage } from "@/lib/conversations";
 import { ActionCardView } from "@/components/action-card";
-import { createChat, refreshChats } from "@/lib/store";
+import { createChat, refreshChats, RETIRED_WORKER } from "@/lib/store";
 import type { Agent, Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -128,7 +128,8 @@ export function ChatView({ agents, initial, live }: { agents: Agent[]; initial: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial.id]);
 
-  if (!agent) {
+  // A worker that is gone leaves its conversations readable (QA DEF-07); only an empty one has nothing to show.
+  if (!agent && messages.length === 0) {
     return (
       <div className="grid h-full place-items-center p-6 text-center">
         <div className="space-y-3">
@@ -141,16 +142,21 @@ export function ChatView({ agents, initial, live }: { agents: Agent[]; initial: 
   }
 
   const lastAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
+  const name = agent?.name ?? RETIRED_WORKER;
 
   return (
     <div className="flex h-full min-h-0">
       {/* thread */}
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex shrink-0 items-center gap-3 border-b px-4 py-2.5 md:px-6">
-          <AgentAvatar name={agent.name} className="size-8" />
+          <AgentAvatar name={name} className="size-8" />
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-semibold leading-tight">{agent.name}</div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="size-1.5 rounded-full bg-emerald-500" />Online</div>
+            <div className="truncate text-sm font-semibold leading-tight">{name}</div>
+            {agent ? (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="size-1.5 rounded-full bg-emerald-500" />Online</div>
+            ) : (
+              <div className="text-xs text-muted-foreground">No longer available · read only</div>
+            )}
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>Switch worker <ChevronDown /></DropdownMenuTrigger>
@@ -168,7 +174,7 @@ export function ChatView({ agents, initial, live }: { agents: Agent[]; initial: 
 
         <div className="min-h-0 flex-1 overflow-auto px-4 py-6 md:px-6">
           <div className="mx-auto max-w-3xl space-y-6">
-            {messages.length === 0 ? (
+            {messages.length === 0 && agent ? (
               <div className="space-y-6 pt-8 text-center">
                 <div className="space-y-2">
                   <AgentAvatar name={agent.name} className="mx-auto size-14 text-xl" />
@@ -182,13 +188,18 @@ export function ChatView({ agents, initial, live }: { agents: Agent[]; initial: 
                 </div>
               </div>
             ) : (
-              messages.map((m) => <MessageRow key={m.id} m={m} agent={agent} onFeedback={setFeedback} activeEmbeds={m.id === lastAssistantId} />)
+              messages.map((m) => <MessageRow key={m.id} m={m} name={name} onFeedback={setFeedback} activeEmbeds={m.id === lastAssistantId} />)
             )}
             <div ref={endRef} />
           </div>
         </div>
 
         <div className="shrink-0 px-4 pb-4 md:px-6">
+          {!agent ? (
+            <p className="mx-auto max-w-3xl rounded-xl border border-dashed p-3 text-center text-sm text-muted-foreground">
+              The worker this conversation was with is no longer available, so it can be read but not continued. Use <b>Switch worker</b> to start a new chat.
+            </p>
+          ) : (
           <form
             onSubmit={(e) => { e.preventDefault(); void send(input); }}
             className="mx-auto flex max-w-3xl items-end gap-2 rounded-xl border bg-card p-2 shadow-sm focus-within:ring-3 focus-within:ring-ring/30"
@@ -206,6 +217,7 @@ export function ChatView({ agents, initial, live }: { agents: Agent[]; initial: 
               <Button type="submit" size="icon" aria-label="Send" disabled={!input.trim()}><ArrowUp /></Button>
             )}
           </form>
+          )}
           <p className="mt-2 text-center text-xs text-muted-foreground">AI can make mistakes. Check important figures against the source.</p>
         </div>
       </div>
@@ -213,15 +225,32 @@ export function ChatView({ agents, initial, live }: { agents: Agent[]; initial: 
   );
 }
 
-function MessageRow({ m, agent, onFeedback, activeEmbeds }: { m: Message; agent: Agent; onFeedback: (m: Message, v: "up" | "down" | undefined) => void; activeEmbeds: boolean }) {
-  const [copied, setCopied] = useState(false);
+function MessageRow({ m, name, onFeedback, activeEmbeds }: { m: Message; name: string; onFeedback: (m: Message, v: "up" | "down" | undefined) => void; activeEmbeds: boolean }) {
+  const [copied, setCopied] = useState<"" | "ok" | "failed">("");
+  const bodyRef = useRef<HTMLDivElement>(null);
   if (m.role === "user") {
     return <div className="flex justify-end"><div className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary px-3.5 py-2 text-sm text-primary-foreground">{stripMarkers(m.text)}</div></div>;
   }
   const working = m.status === "working";
+  // Copy takes the answer as shown, not its markdown (QA DEF-38): plain text, plus HTML so a paste into email or a document keeps the bold and lists.
+  async function copy() {
+    const el = bodyRef.current;
+    const text = el?.innerText.trim() || stripMarkers(m.text);
+    try {
+      if (el && typeof ClipboardItem !== "undefined") {
+        await navigator.clipboard.write([new ClipboardItem({ "text/plain": new Blob([text], { type: "text/plain" }), "text/html": new Blob([el.innerHTML], { type: "text/html" }) })]);
+      } else {
+        await navigator.clipboard.writeText(text);
+      }
+      setCopied("ok");
+    } catch {
+      try { await navigator.clipboard.writeText(text); setCopied("ok"); } catch { setCopied("failed"); }
+    }
+    setTimeout(() => setCopied(""), 2000);
+  }
   return (
     <div className="flex gap-3">
-      <AgentAvatar name={agent.name} className="size-8" />
+      <AgentAvatar name={name} className="size-8" />
       <div className="min-w-0 flex-1 space-y-3 text-sm leading-relaxed">
         {(m.toolLabel || working) && (
           <div className="inline-flex max-w-full items-center gap-2 rounded-lg border bg-card px-3 py-1.5 font-mono text-xs text-muted-foreground">
@@ -229,7 +258,7 @@ function MessageRow({ m, agent, onFeedback, activeEmbeds }: { m: Message; agent:
             <span className="truncate">{!m.toolLabel ? "Thinking…" : working ? m.toolLabel.replace(/^(Queried|Looked up|Used)/, "Using") + "…" : m.toolLabel}</span>
           </div>
         )}
-        {renderMarkdown(m.text)}
+        <div ref={bodyRef} className="space-y-3">{renderMarkdown(m.text)}</div>
         {m.embeds?.map((html, i) =>
           activeEmbeds ? (
             <iframe key={i} data-embed title="Form from the worker" sandbox="allow-scripts" srcDoc={html} className="block w-full rounded-xl border-0 bg-transparent" style={{ height: 360 }} />
@@ -268,16 +297,19 @@ function MessageRow({ m, agent, onFeedback, activeEmbeds }: { m: Message; agent:
           </div>
         )}
         {m.status === "done" && (
-          <div className="-ml-1.5 flex gap-0.5">
+          <div className="-ml-1.5 flex items-center gap-0.5">
             <Button variant="ghost" size="icon-sm" aria-label="Good answer" aria-pressed={m.feedback === "up"} onClick={() => onFeedback(m, m.feedback === "up" ? undefined : "up")}>
               <ThumbsUp className={cn(m.feedback === "up" && "fill-current")} />
             </Button>
             <Button variant="ghost" size="icon-sm" aria-label="Needs work" aria-pressed={m.feedback === "down"} onClick={() => onFeedback(m, m.feedback === "down" ? undefined : "down")}>
               <ThumbsDown className={cn(m.feedback === "down" && "fill-current")} />
             </Button>
-            <Button variant="ghost" size="icon-sm" aria-label="Copy" onClick={async () => { try { await navigator.clipboard.writeText(m.text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {} }}>
-              {copied ? <Check /> : <Copy />}
+            <Button variant="ghost" size="icon-sm" aria-label={copied === "ok" ? "Copied" : "Copy"} onClick={() => void copy()}>
+              {copied === "ok" ? <Check /> : <Copy />}
             </Button>
+            <span role="status" aria-live="polite" className={cn("text-xs", copied === "failed" ? "text-destructive" : "text-muted-foreground")}>
+              {copied === "ok" ? "Copied" : copied === "failed" ? "Couldn’t copy" : ""}
+            </span>
           </div>
         )}
       </div>

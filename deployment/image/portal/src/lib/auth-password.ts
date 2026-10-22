@@ -39,7 +39,7 @@ export function passwordProblem(pw: string, email = ""): string | null {
   const low = pw.toLowerCase();
   if (COMMON.has(low) || /^(.)\1+$/.test(pw)) return "That password is too easy to guess.";
   const local = email.split("@")[0]?.toLowerCase();
-  if (local && local.length >= 4 && low.includes(local)) return "Do not use your email name in your password.";
+  if (local && local.length >= 4 && low.includes(local)) return "Do not include the first part of your email address (before the @) in your password.";
   return null;
 }
 

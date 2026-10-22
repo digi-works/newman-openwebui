@@ -25,7 +25,7 @@ import { getTenant } from "@/lib/tenant";
 
 type Body = { conversationId?: unknown; text?: unknown; app?: unknown };
 const bad = (error: string, status = 400) => Response.json({ error }, { status });
-const SSE_HEADERS = { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no" };
+const SSE_HEADERS = { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-store, no-transform", "X-Accel-Buffering": "no" };
 const FLUSH_MS = 1500;
 const MAX_TEXT = 8000;
 /** Tool modules that carry Digi tools. They are offered only as far as the person may use them (M5.5); the old single bundle id is still recognised. */

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import type { NotificationSettings } from "@/lib/booking-emails";
+import { campusTime } from "@/lib/campus-time";
 
 export type EmailLogItem = { at: string; kind: string; status: string; error: string | null };
 
@@ -69,7 +70,7 @@ export function NotificationsAdmin({ initial, mail, log }: { initial: Notificati
         <div className="space-y-1.5">
           <label htmlFor="managers" className="font-medium">Room manager email</label>
           <div className="flex gap-2">
-            <Input id="managers" value={managers} onChange={(e) => setManagers(e.target.value)} placeholder="rooms@example.edu" />
+            <Input id="managers" value={managers} onChange={(e) => setManagers(e.target.value)} placeholder="The room manager’s email address" />
             <Button variant="outline" disabled={busy !== null || managers.trim() === s.managerEmails.join(", ")} onClick={() => save(s, "managers")}>{spin("managers")} Save</Button>
           </div>
           <p className="text-xs text-muted-foreground">Receives every new request. Separate several with commas. To approve or reject from the email, this address needs a Digi account that can approve room requests.</p>
@@ -91,7 +92,7 @@ export function NotificationsAdmin({ initial, mail, log }: { initial: Notificati
               {log.map((l, i) => (
                 <li key={i} className="flex flex-wrap items-baseline justify-between gap-x-3 px-3 py-2">
                   <span>{l.kind}</span>
-                  <span className={l.status === "failed" ? "text-destructive" : "text-muted-foreground"}>{l.status === "completed" ? "sent" : l.status}{l.error && l.status !== "completed" ? `: ${l.error}` : ""} · {new Date(l.at).toLocaleString()}</span>
+                  <span className={l.status === "failed" ? "text-destructive" : "text-muted-foreground"}>{l.status === "completed" ? "sent" : l.status}{l.error && l.status !== "completed" ? `: ${l.error}` : ""} · {campusTime(l.at)}</span>
                 </li>
               ))}
             </ul>

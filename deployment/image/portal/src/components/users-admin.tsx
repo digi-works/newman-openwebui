@@ -2,14 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Copy, KeyRound, Loader2, UserPlus } from "lucide-react";
+import { Copy, KeyRound, Loader2, Trash2, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AdminUserRow, RoleOption } from "@/lib/admin-users";
+import { campusTime } from "@/lib/campus-time";
 
 type Can = { create: boolean; update: boolean; disable: boolean; giveAdmin: boolean };
-const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Never");
+const when = (iso: string | null) => (iso ? campusTime(iso, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Never");
 
 export function UsersAdmin({ users, roles, selfId, can }: { users: AdminUserRow[]; roles: RoleOption[]; selfId: string; can: Can }) {
   // Only an Admin can hand out the Admin role
@@ -21,6 +22,8 @@ export function UsersAdmin({ users, roles, selfId, can }: { users: AdminUserRow[
   const [adding, setAdding] = useState(false);
   // Reset password asks first (QA DEF-27): the id of the row waiting for "Yes, reset".
   const [confirmReset, setConfirmReset] = useState<string | null>(null);
+  // Delete asks first too (QA DEF-33), and cannot be undone.
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   async function call(url: string, method: string, body: unknown, key: string) {
     setBusy(key); setError("");
@@ -31,6 +34,10 @@ export function UsersAdmin({ users, roles, selfId, can }: { users: AdminUserRow[
     router.refresh();
     return out as { temporaryPassword?: string };
   }
+
+  // The Add user field an error is about is marked and points at the message (QA DEF-43, TC-EXP-34); errors from createUser name their field.
+  const badField = adding && error ? (/email/i.test(error) ? "email" : /name/i.test(error) ? "name" : /role/i.test(error) ? "role" : null) : null;
+  const fieldProps = (f: string) => (badField === f ? { "aria-invalid": true, "aria-describedby": "users-error" } : {});
 
   async function create(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -62,16 +69,16 @@ export function UsersAdmin({ users, roles, selfId, can }: { users: AdminUserRow[
           <Button size="sm" variant="ghost" onClick={() => setSecret(null)}>Done</Button>
         </div>
       )}
-      {error && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+      {error && <p id="users-error" role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
 
       {adding && (
         /* an error belongs to the attempt that caused it, so editing the form clears it (QA DEF-31) */
         <form onSubmit={create} onChange={() => setError("")} className="grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-[1fr_1fr_10rem_auto] sm:items-end">
-          <div className="space-y-1.5"><label htmlFor="name" className="text-sm font-medium">Name</label><Input id="name" name="name" required maxLength={120} /></div>
-          <div className="space-y-1.5"><label htmlFor="email" className="text-sm font-medium">Email</label><Input id="email" name="email" type="email" required /></div>
+          <div className="space-y-1.5"><label htmlFor="name" className="text-sm font-medium">Name</label><Input id="name" name="name" required maxLength={120} {...fieldProps("name")} /></div>
+          <div className="space-y-1.5"><label htmlFor="email" className="text-sm font-medium">Email</label><Input id="email" name="email" type="email" required {...fieldProps("email")} /></div>
           <div className="space-y-1.5">
             <label htmlFor="role" className="text-sm font-medium">Role</label>
-            <select id="role" name="role" defaultValue={givable.find((r) => r.name === "Student")?.name ?? givable[0]?.name} className="h-9 w-full rounded-md border bg-background px-2 text-sm">{givable.map((r) => <option key={r.id}>{r.name}</option>)}</select>
+            <select id="role" name="role" {...fieldProps("role")} defaultValue={givable.find((r) => r.name === "Student")?.name ?? givable[0]?.name} className="h-9 w-full rounded-md border bg-background px-2 text-sm">{givable.map((r) => <option key={r.id}>{r.name}</option>)}</select>
           </div>
           <Button type="submit" disabled={busy === "create"}>{busy === "create" && <Loader2 className="animate-spin" />} Create</Button>
         </form>
@@ -93,8 +100,11 @@ export function UsersAdmin({ users, roles, selfId, can }: { users: AdminUserRow[
                   </select>
                 </td>
                 <td className="px-4 py-3">
-                  <Badge variant={u.status === "active" ? "secondary" : "outline"}>{u.status === "active" ? "Active" : "Disabled"}</Badge>
-                  {u.mustChangePassword && <span className="ml-2 text-xs text-muted-foreground">temporary password</span>}
+                  {/* each status is its own badge, side by side, wrapping as whole badges in a narrow column */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge variant={u.status === "active" ? "secondary" : "outline"}>{u.status === "active" ? "Active" : "Disabled"}</Badge>
+                    {u.mustChangePassword && <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400">Temporary password</Badge>}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">{when(u.lastLogin)}</td>
                 <td className="px-4 py-3">
@@ -106,11 +116,20 @@ export function UsersAdmin({ users, roles, selfId, can }: { users: AdminUserRow[
                         <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => setConfirmReset(null)}>Cancel</Button>
                       </span>
                     ) : (
-                      <Button size="sm" variant="outline" disabled={busy !== null || (u.role.includes("Admin") && !can.giveAdmin)} onClick={() => setConfirmReset(u.id)}>Reset password</Button>
+                      <Button size="sm" variant="outline" disabled={busy !== null || (u.role.includes("Admin") && !can.giveAdmin)} onClick={() => { setConfirmDelete(null); setConfirmReset(u.id); }}>Reset password</Button>
                     ))}
                     {can.disable && u.id !== selfId && (
                       <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => act(u, u.status === "active" ? "disable" : "enable")}>{u.status === "active" ? "Disable" : "Enable"}</Button>
                     )}
+                    {can.disable && u.id !== selfId && (confirmDelete === u.id ? (
+                      <span className="flex flex-wrap items-center justify-end gap-2">
+                        <span className="text-xs text-muted-foreground">Delete {u.name} and their conversations? This cannot be undone.</span>
+                        <Button size="sm" variant="destructive" disabled={busy !== null} aria-label={`Yes, delete ${u.name}`} onClick={() => { setConfirmDelete(null); void call(`/api/admin/users/${u.id}`, "DELETE", {}, u.id + "delete"); }}>Yes, delete</Button>
+                        <Button size="sm" variant="outline" autoFocus disabled={busy !== null} onClick={() => setConfirmDelete(null)}>Keep</Button>
+                      </span>
+                    ) : (
+                      <Button size="icon-sm" variant="ghost" aria-label={`Delete ${u.name}`} disabled={busy !== null || (u.role.includes("Admin") && !can.giveAdmin)} onClick={() => { setConfirmReset(null); setConfirmDelete(u.id); }}><Trash2 /></Button>
+                    ))}
                   </div>
                 </td>
               </tr>

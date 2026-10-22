@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { campusTime } from "@/lib/campus-time";
 
 type Rel = { release_id: string; seq: number; channel: string; status: string; security_critical: boolean; notes: string; digest: string; key_id: string; signed_at: string; manifest: Record<string, unknown> };
 
@@ -59,7 +60,7 @@ export function ReleasesView({ releases, published, signerReady, isAdmin }: { re
                   <span className={r.status === "signed" ? "text-emerald-700 dark:text-emerald-300" : "text-destructive"}>{r.status}</span>
                 </div>
                 <div className="text-muted-foreground">{((r.manifest.workers as { name: string; version: number }[]) ?? []).map((w) => `${w.name} v${w.version}`).join(", ")}</div>
-                <div className="break-all font-mono text-xs text-muted-foreground">key {r.key_id} · digest {r.digest.slice(0, 16)}… · {new Date(r.signed_at).toLocaleString()}</div>
+                <div className="break-all font-mono text-xs text-muted-foreground">key {r.key_id} · digest {r.digest.slice(0, 16)}… · {campusTime(r.signed_at)}</div>
                 {isAdmin && r.status === "signed" && <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => { const reason = window.prompt("Why is this release being revoked?"); if (reason) void call("rev" + r.release_id, `/api/platform/releases/${r.release_id}/revoke`, { reason }, "Revoked. Stacks learn of it on their next check."); }}>Revoke</Button>}
               </li>
             ))}

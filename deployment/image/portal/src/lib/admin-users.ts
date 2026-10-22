@@ -117,3 +117,28 @@ export async function updateUser(admin: SessionUser, id: string, change: { actio
   }
   return { error: "Unknown action.", status: 400 };
 }
+
+/**
+ * Removes an account for good (QA DEF-33), with the same guard rails as disabling it. Their sessions, conversations, memories and roles go with
+ * them (the foreign keys cascade); room bookings and the audit trail stay, no longer linked to a person. The audit event keeps who it was.
+ */
+export async function deleteUser(admin: SessionUser, id: string): Promise<Failure | { ok: true }> {
+  if (!/^[0-9a-f-]{36}$/.test(id)) return { error: "Unknown user.", status: 404 };
+  if (id === admin.id) return { error: "You cannot delete your own account.", status: 400 };
+  return withTenant(admin.tenantId, async (c) => {
+    const target = (await c.query(
+      `select u.email, u.name, exists (select 1 from user_roles ur join roles r on r.id = ur.role_id where ur.user_id = u.id and r.grants_all) as is_admin
+         from users u where u.id = $1 for update`, [id])).rows[0];
+    if (!target) return { error: "Unknown user.", status: 404 };
+    if (target.is_admin && !isAll(admin)) return { error: "Only an Admin can delete an Admin account.", status: 403 };
+    if (target.is_admin) {
+      const others = (await c.query(
+        `select count(*)::int as n from users u where u.id <> $1 and u.status = 'active'
+           and exists (select 1 from user_roles ur join roles r on r.id = ur.role_id where ur.user_id = u.id and r.grants_all)`, [id])).rows[0].n;
+      if (others < 1) return { error: "There must be at least one active Admin.", status: 400 };
+    }
+    await c.query("delete from users where id = $1", [id]);
+    await auditEvent(c, { tenantId: admin.tenantId, userId: admin.id, action: "user.delete", entityType: "user", entityId: id, metadata: { email: target.email, name: target.name } });
+    return { ok: true as const };
+  });
+}

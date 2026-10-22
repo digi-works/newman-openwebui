@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentAvatar } from "@/components/agent-avatar";
-import { deleteChat, refreshChats, relativeDay, timeLabel, useStore, visibleChats } from "@/lib/store";
+import { deleteChat, refreshChats, relativeDay, RETIRED_WORKER, timeLabel, useStore, visibleChats } from "@/lib/store";
 import type { Agent } from "@/lib/types";
 
 const ORDER = ["Today", "Yesterday", "Earlier this week", "Older"];
@@ -19,7 +19,9 @@ export function HistoryList({ agents }: { agents: Agent[] }) {
   const retry = async () => { setRetrying(true); await refreshChats(); setRetrying(false); };
   // Deleting asks first (QA DEF-29): the trash button turns the row into "Delete this chat?", and only "Yes, delete" deletes.
   const [confirming, setConfirming] = useState<string | null>(null);
-  const name = (id: string) => agents.find((a) => a.id === id)?.name ?? "Agent";
+  // A worker missing from a list that did load has been retired (QA DEF-07); with no list at all, nothing is known, so stay neutral.
+  const retired = (id: string) => agents.length > 0 && !agents.some((a) => a.id === id);
+  const name = (id: string) => agents.find((a) => a.id === id)?.name ?? (agents.length ? RETIRED_WORKER : "Agent");
 
   const groups = new Map<string, ReturnType<typeof visibleChats>>();
   visibleChats(chats)
@@ -62,7 +64,7 @@ export function HistoryList({ agents }: { agents: Agent[] }) {
                 <AgentAvatar name={name(c.agentId)} className="size-8" />
                 <div className="min-w-0 flex-1">
                   <Link href={`/chat/${c.id}`} className="block truncate text-sm font-medium after:absolute after:inset-0 after:content-['']">{c.title}</Link>
-                  <div className="truncate text-xs text-muted-foreground">{name(c.agentId)}</div>
+                  <div className="truncate text-xs text-muted-foreground">{name(c.agentId)}{retired(c.agentId) && " · read only"}</div>
                 </div>
                 {confirming === c.id ? (
                   <div className="relative z-10 flex items-center gap-2">

@@ -82,6 +82,9 @@ export async function toggleFavorite(agentId: string) {
   else set(before);
 }
 
+/** The name shown for a conversation whose worker is no longer offered (QA DEF-07). It can still be read, not continued. */
+export const RETIRED_WORKER = "Retired worker";
+
 /** Conversations that have at least one message, newest first. */
 export const visibleChats = (chats: ChatSummary[]) => [...chats].filter((c) => c.messageCount > 0).sort((a, b) => b.updatedAt - a.updatedAt);
 

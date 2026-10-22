@@ -32,8 +32,18 @@ export function RuntimeAdmin({ initial }: { initial: RuntimeView }) {
             <div className="font-medium">{o.name} {initial.current === o.id && <span className="ml-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-300">in use</span>}</div>
             <div className={o.ok ? "text-muted-foreground" : "text-destructive"}>{o.detail}</div>
             {o.blockedBy.length > 0 && <div className="text-xs text-destructive">Cannot run what is installed (needs {o.blockedBy.join(", ")}).</div>}
+            {/* a runtime that cannot be reached or cannot run what is installed is not offered (QA DEF-55); the server refuses it anyway */}
+            {initial.current !== o.id && (!o.ok || o.blockedBy.length > 0) && (
+              <div id={`switch-${o.id}-why`} className="text-xs text-muted-foreground">
+                {!o.ok ? `To switch, ${o.name} must be running and reachable from Digi. Ask whoever runs your server to set it up, then reload this page.` : `To switch, ${o.name} must support everything installed.`}
+              </div>
+            )}
           </div>
-          {initial.current !== o.id && <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => choose(o.id)}>{busy === o.id && <Loader2 className="animate-spin" />} Switch to {o.name}</Button>}
+          {initial.current !== o.id && (
+            <Button size="sm" variant="outline" disabled={busy !== null || !o.ok || o.blockedBy.length > 0} aria-describedby={!o.ok || o.blockedBy.length > 0 ? `switch-${o.id}-why` : undefined} onClick={() => choose(o.id)}>
+              {busy === o.id && <Loader2 className="animate-spin" />} Switch to {o.name}
+            </Button>
+          )}
         </div>
       ))}
       {msg && <div role="status" className={msg.ok ? "text-emerald-700 dark:text-emerald-300" : "text-destructive"}>{msg.text}{msg.problems?.map((p) => <div key={p}>· {p}</div>)}</div>}

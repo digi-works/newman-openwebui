@@ -165,8 +165,29 @@ Run from the `deployment/aws` folder. `.env` and the data volumes are never touc
   - **Stop** in chat ends the answer on the server too, and only what was shown is saved, so a reload or History no longer reveals an answer that was stopped (QA DEF-50).
   - **History** says when your conversations could not be loaded and offers Try again, instead of showing "No conversations yet" (QA DEF-52).
   - If Digi tells someone to press Confirm but no confirmation card was prepared, the answer now says so and how to get the card, instead of leaving them looking for it.
-  - No database migration.
+  - Conversations with a worker that no longer exists show as **Retired worker · read only** in History (not "Agent"), and open read only instead of a dead end (QA DEF-07).
+  - **Settings > Users** shows "Temporary password" as its own badge next to Active / Disabled, instead of loose text that wrapped around the badge.
+  - **Settings > Users** can delete an account (trash button, asks first; needs the Disable users permission, and only an Admin can delete an Admin). Their conversations and memories go with it; room bookings and the audit trail stay, without the link to the person (QA DEF-33).
+  - **Copy** on an answer copies the text as shown (no `**` markdown; pastes into email or documents with the formatting) and says "Copied" (QA DEF-38).
+  - **Change password** flags "The new passwords do not match" while typing (the browser will not submit it), and the hint says plainly not to include the first part of your email address (QA DEF-40).
+  - Screen readers: after a rejected sign-in the Email and Password fields are marked invalid and point at the error, and the Add user field an error is about is marked the same way (QA DEF-43).
+  - Unknown `/api/...` paths (including `/API/...`) answer `404 {"error":"No such API endpoint.","code":"no_such_endpoint"}` from the portal itself, not the HTML 404 page, as Caddy already did (QA DEF-44).
+  - A method an API route does not take answers `405` in JSON with an `Allow` header, `OPTIONS` answers `204` with `Allow` even when signed out, and a method the portal never implements answers `501` in JSON (QA DEF-45).
+  - Times on Settings > Users, Approvals, Bookings, Notifications and AI updates are shown in campus time (Central), the same on the server and in the browser, which removes the React hydration error on a full load of Settings > Users (QA DEF-51).
+  - A room search for a time that has already passed says "That time has already passed" (in chat and on the Request a room page) instead of listing free rooms the request step would then refuse (QA DEF-53).
+  - **Settings > AI**: "Switch to Strands" (or back) is disabled while that runtime cannot be reached or cannot run what is installed, with a line saying what has to happen first (QA DEF-55).
+  - Every `/api/*` answer carries `Cache-Control: no-store`, like the pages, so data is never kept by a browser or proxy cache (QA DEF-56).
+  - The notification bell says "1 unread notification" (not "notifications"), its rows are menu items that arrow keys move between, and choosing one closes the panel (QA DEF-57).
+  - **Settings > Memory** shows when each note was added ("Added Oct 16, 2026, 11:38 AM", campus time) (QA DEF-58).
+  - Copy: the AI updates page links to the Permissions page instead of naming a module that only exists once a capability is installed; the "Tool connections" permission says plainly that there is no screen for it (tool servers are set up through the admin API); the home page reads "Ask Digi, your Digital Institutional Gateway for Information, about events…" (QA DEF-59).
+  - **Approvals** lists every waiting room request (room, time, size, purpose, who asked, reference) with Approve / Decline, the same decision as on Bookings; your own requests are listed but another approver has to decide them.
+  - One small database migration (`0015_permission_copy.sql`, rewords one permission's description) runs by itself at start.
 - Tool modules: `digi_rooms` (the chat room form starts at today, 2 to 3 pm, 6 people, like the page; Digi looks up one room by name, so "the capacity of St. John's Chapel" or "Performance Hall" is answered instead of "not listed", and a room list covers every room and says when it shows only part of them, QA DEF-49) and `digi_bookings` (request_room says the card only exists once it is called). Run step 3 with `--update digi_rooms,digi_bookings`.
+- `Caddyfile`: TRACE, PURGE and other methods the portal never implements answer `501` in JSON under `/api/*` (the portal's server would give a 500 or an empty 400); the old 405 rewrite is gone because the portal now sends its own 405 with `Allow` (QA DEF-45). A request whose Host header is not this site is refused with `421 Misdirected Request` instead of an empty 200 (`strict_sni_host`, QA DEF-46). `/api/*` answers get `Cache-Control: no-store` when they have none (QA DEF-56). Check and reload it:
+  ```bash
+  docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+  docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
+  ```
 - Digi's instructions: add this line under "Honesty rules" (step 4):
   > - A confirmation card exists only when request_room, cancel_booking or another tool that prepares an action was called in this reply. Never say a card is shown, or tell someone to press Confirm, without calling that tool in this reply. If they ask where the card is, or it is not showing, call the tool again with the same details.
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { campusTime } from "@/lib/campus-time";
 import type { Memory } from "@/lib/memory";
 
 /** What Digi remembers about you, in your own words. You can add to it, and delete any note. Digi never adds notes by itself. */
@@ -52,7 +53,11 @@ export function MemoryView({ initialItems, enabled }: { initialItems: Memory[]; 
           <ul className="divide-y">
             {items.map((m) => (
               <li key={m.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
-                <span>{m.content}</span>
+                {/* when each note was added, so similar notes can be told apart and old ones found (QA DEF-58) */}
+                <div className="min-w-0">
+                  <div className="break-words">{m.content}</div>
+                  <time dateTime={m.createdAt} className="text-xs text-muted-foreground">Added {campusTime(m.createdAt)}</time>
+                </div>
                 <Button size="icon-sm" variant="ghost" aria-label="Delete this note" disabled={busy !== null} onClick={() => remove(m.id)}>{busy === m.id ? <Loader2 className="animate-spin" /> : <Trash2 />}</Button>
               </li>
             ))}

@@ -10,6 +10,10 @@ export function LoginForm({ org }: { org: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // A rejected sign-in is about the email and password together (the message never says which), so both are marked and point at it (QA DEF-43).
+  const [badFields, setBadFields] = useState(false);
+  const fieldProps = badFields ? { "aria-invalid": true, "aria-describedby": "login-error" } : {};
+  const edited = () => { if (badFields) setBadFields(false); };
   // Digi cannot send email, so recovery is an Admin's Reset password (QA DEF-30); this says how to ask for it.
   const [forgot, setForgot] = useState(false);
 
@@ -26,6 +30,7 @@ export function LoginForm({ org }: { org: string }) {
       });
       if (!res.ok) {
         setError((await res.json().catch(() => ({}))).error ?? "Sign-in failed. Try again.");
+        setBadFields(res.status < 500);
         setBusy(false);
         return;
       }
@@ -33,6 +38,7 @@ export function LoginForm({ org }: { org: string }) {
       router.replace(out.mustChangePassword ? "/account/password" : "/");
       router.refresh();
     } catch {
+      setBadFields(false);
       setError("Can’t reach the portal. Check your connection and try again.");
       setBusy(false);
     }
@@ -47,21 +53,21 @@ export function LoginForm({ org }: { org: string }) {
       <div className="space-y-4">
         <div className="space-y-1.5">
           <label htmlFor="email" className="text-sm font-medium">Email</label>
-          <Input id="email" name="email" type="email" required autoFocus placeholder="you@newmanu.edu" autoComplete="username" className="h-10" />
+          <Input id="email" name="email" type="email" required autoFocus placeholder="you@newmanu.edu" autoComplete="username" onInput={edited} {...fieldProps} className="h-10" />
         </div>
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label htmlFor="password" className="text-sm font-medium">Password</label>
             <button type="button" aria-expanded={forgot} onClick={() => setForgot((v) => !v)} className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Forgot password?</button>
           </div>
-          <Input id="password" name="password" type="password" required autoComplete="current-password" className="h-10" />
+          <Input id="password" name="password" type="password" required autoComplete="current-password" onInput={edited} {...fieldProps} className="h-10" />
         </div>
         {forgot && (
           <p role="status" className="rounded-lg border bg-muted px-3 py-2 text-sm text-muted-foreground">
             Ask an Admin at {org} to reset it under Settings &gt; Users. They will give you a temporary password, and you choose a new one when you sign in. If no Admin can sign in, your IT team can reset it on the server.
           </p>
         )}
-        {error && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+        {error && <p id="login-error" role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
         <Button type="submit" size="lg" className="h-10 w-full" disabled={busy}>{busy && <Loader2 className="animate-spin" />}{busy ? "Signing in…" : "Sign in"}</Button>
       </div>
     </form>

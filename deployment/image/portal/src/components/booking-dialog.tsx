@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { isOwnBooking, type Booking, type BookingStatus } from "@/lib/bookings";
 import { cn } from "@/lib/utils";
+import { campusTime } from "@/lib/campus-time";
 
 export const STATUS_STYLE: Record<BookingStatus, string> = {
   Tentative: "bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300",
@@ -119,7 +120,7 @@ function Body({ booking: b, viewer, can, onClose, onChanged }: {
           <p className="text-sm font-medium text-muted-foreground">{b.ref}</p>
           <DialogTitle className="mt-0.5 text-2xl font-semibold tracking-tight">{b.room}</DialogTitle>
           <DialogDescription className="mt-1 text-sm text-muted-foreground">
-            Submitted {fmt(b.submitted)}{b.expiresAt && waiting ? ` · expires ${new Date(b.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })} if no one decides` : ""}
+            Submitted {fmt(b.submitted)}{b.expiresAt && waiting ? ` · expires ${campusTime(b.expiresAt, { month: "short", day: "numeric" })} if no one decides` : ""}
           </DialogDescription>
         </div>
         <div className="flex items-center gap-2">

@@ -131,6 +131,9 @@ export async function searchAvailable(tenantId: string, q: { date: string; start
   const rooms = await getRooms(tenantId);
   const busy = await withTenant(tenantId, async (c) => {
     const { tz } = await settings(c, tenantId);
+    // the same rule as a request, so a search never offers rooms for a time the request step will refuse (QA DEF-53)
+    const past = (await c.query(`select (($1::date + $2::time) at time zone $3) < now() as past`, [q.date, s, tz])).rows[0].past;
+    if (past) throw new BookingError("That time has already passed. Choose a later time.");
     await expireStale(c, tenantId);
     return busyRoomIds(c, tz, q.date, s, e);
   });

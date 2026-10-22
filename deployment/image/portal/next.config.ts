@@ -13,6 +13,12 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ],
       },
+      {
+        // API answers carry people's data and are never stored by a browser or proxy, like the pages (QA DEF-56).
+        // The chat stream sets its own (no-store, no-transform), so it is left out here.
+        source: "/api/:path((?!chat$).*)",
+        headers: [{ key: "Cache-Control", value: "no-store" }],
+      },
     ];
   },
 };
