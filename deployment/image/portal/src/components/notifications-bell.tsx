@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { Bell, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { Notification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +31,7 @@ export function NotificationsBell({ items, userId }: { items: Notification[]; us
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="relative" aria-label={unread.length ? `${unread.length} unread notifications` : "Notifications"} />}>
+      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="relative" aria-label={unread.length ? `${unread.length} unread notification${unread.length === 1 ? "" : "s"}` : "Notifications"} />}>
         {unread.length ? <BellRing className="size-4" /> : <Bell className="size-4" />}
         {unread.length > 0 && <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[oklch(0.5_0.17_22)] ring-2 ring-background" />}
       </DropdownMenuTrigger>
@@ -43,16 +43,18 @@ export function NotificationsBell({ items, userId }: { items: Notification[]; us
         {items.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-muted-foreground">You’re all caught up.</div>
         ) : (
-          <ul className="max-h-80 overflow-auto">
+          // each row is a menu item: arrow keys move between them, and choosing one closes the panel (QA DEF-57)
+          <div className="max-h-80 overflow-auto">
             {items.map((n) => (
-              <li key={n.id}>
-                <Link href={n.href} onClick={markAll} className={cn("block border-b px-4 py-3 last:border-0 hover:bg-muted", !isRead(n) && "bg-accent/40")}>
-                  <span className="block text-sm font-medium">{n.title}</span>
-                  <span className="mt-0.5 block text-xs text-muted-foreground">{n.body}</span>
-                </Link>
-              </li>
+              <DropdownMenuItem
+                key={n.id} onClick={markAll} render={<Link href={n.href} />}
+                className={cn("flex-col items-start gap-0.5 rounded-none border-b px-4 py-3 last:border-0 hover:bg-muted", !isRead(n) && "bg-accent/40")}
+              >
+                <span className="block text-sm font-medium">{n.title}</span>
+                <span className="block text-xs text-muted-foreground">{n.body}</span>
+              </DropdownMenuItem>
             ))}
-          </ul>
+          </div>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

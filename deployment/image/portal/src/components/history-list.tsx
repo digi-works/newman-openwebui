@@ -7,17 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AgentAvatar } from "@/components/agent-avatar";
-import { deleteChat, relativeDay, timeLabel, useStore, visibleChats } from "@/lib/store";
+import { deleteChat, refreshChats, relativeDay, RETIRED_WORKER, timeLabel, useStore, visibleChats } from "@/lib/store";
 import type { Agent } from "@/lib/types";
 
 const ORDER = ["Today", "Yesterday", "Earlier this week", "Older"];
 
 export function HistoryList({ agents }: { agents: Agent[] }) {
-  const { chats, hydrated } = useStore();
+  const { chats, hydrated, failed } = useStore();
   const [q, setQ] = useState("");
+  const [retrying, setRetrying] = useState(false);
+  const retry = async () => { setRetrying(true); await refreshChats(); setRetrying(false); };
   // Deleting asks first (QA DEF-29): the trash button turns the row into "Delete this chat?", and only "Yes, delete" deletes.
   const [confirming, setConfirming] = useState<string | null>(null);
-  const name = (id: string) => agents.find((a) => a.id === id)?.name ?? "Agent";
+  // A worker missing from a list that did load has been retired (QA DEF-07); with no list at all, nothing is known, so stay neutral.
+  const retired = (id: string) => agents.length > 0 && !agents.some((a) => a.id === id);
+  const name = (id: string) => agents.find((a) => a.id === id)?.name ?? (agents.length ? RETIRED_WORKER : "Agent");
 
   const groups = new Map<string, ReturnType<typeof visibleChats>>();
   visibleChats(chats)
@@ -37,9 +41,17 @@ export function HistoryList({ agents }: { agents: Agent[] }) {
         </div>
       </div>
 
+      {/* A failed load is an error, not an empty account (QA DEF-52); the list already shown, if any, stays below it. */}
+      {hydrated && failed && (
+        <div role="alert" className="flex flex-col items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-center text-sm text-destructive sm:flex-row sm:justify-between sm:text-left">
+          <span>Your conversations could not be loaded. Check your connection and try again.</span>
+          <Button size="sm" variant="outline" disabled={retrying} onClick={() => void retry()}>{retrying ? "Trying again…" : "Try again"}</Button>
+        </div>
+      )}
+
       {!hydrated ? (
         <div className="space-y-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
-      ) : groups.size === 0 ? (
+      ) : failed && visibleChats(chats).length === 0 ? null : groups.size === 0 ? (
         <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
           {q ? `No conversations match “${q}”.` : "No conversations yet. Pick a worker to start one."}
         </div>
@@ -52,7 +64,7 @@ export function HistoryList({ agents }: { agents: Agent[] }) {
                 <AgentAvatar name={name(c.agentId)} className="size-8" />
                 <div className="min-w-0 flex-1">
                   <Link href={`/chat/${c.id}`} className="block truncate text-sm font-medium after:absolute after:inset-0 after:content-['']">{c.title}</Link>
-                  <div className="truncate text-xs text-muted-foreground">{name(c.agentId)}</div>
+                  <div className="truncate text-xs text-muted-foreground">{name(c.agentId)}{retired(c.agentId) && " · read only"}</div>
                 </div>
                 {confirming === c.id ? (
                   <div className="relative z-10 flex items-center gap-2">

@@ -1,4 +1,4 @@
-import { ACTION_PERMISSION, updateUser } from "@/lib/admin-users";
+import { ACTION_PERMISSION, deleteUser, updateUser } from "@/lib/admin-users";
 import { requirePermission } from "@/lib/session";
 
 const fail = (error: string, status: number) => Response.json({ error }, { status });
@@ -11,6 +11,16 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const user = await requirePermission(ACTION_PERMISSION[b.action as keyof typeof ACTION_PERMISSION]);
   if (!user) return fail("Not allowed.", 403);
   const out = await updateUser(user, id, { action: b.action, role: typeof b.role === "string" ? b.role : undefined });
+  if ("error" in out) return fail(out.error, out.status ?? 400);
+  return Response.json(out);
+}
+
+/** Deletes an account for good. Needs the same permission as disabling one. */
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
+  const user = await requirePermission("users.disable");
+  if (!user) return fail("Not allowed.", 403);
+  const out = await deleteUser(user, id);
   if ("error" in out) return fail(out.error, out.status ?? 400);
   return Response.json(out);
 }

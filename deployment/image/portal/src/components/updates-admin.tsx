@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, RefreshCw, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { UpdatesView } from "@/lib/stack/admin";
+import { campusTime } from "@/lib/campus-time";
 
 const STATUS: Record<string, string> = {
   pending_approval: "Waiting for you", active: "Running", superseded: "Replaced", rolled_back: "Rolled back", rejected: "Not installed", revoked: "Withdrawn by the platform", failed: "Could not be set up",
@@ -53,7 +55,7 @@ export function UpdatesAdmin({ initial }: { initial: UpdatesView | null }) {
           </>
         ) : (
           <div className="space-y-3 text-sm">
-            <p className="text-muted-foreground">Connected as <b className="font-mono">{id.installationId}</b>. {id.lastCheckAt ? `Last checked ${new Date(id.lastCheckAt).toLocaleString()}.` : "Not checked yet."}</p>
+            <p className="text-muted-foreground">Connected as <b className="font-mono">{id.installationId}</b>. {id.lastCheckAt ? `Last checked ${campusTime(id.lastCheckAt)}.` : "Not checked yet."}</p>
             {id.lastCheckError && <p role="alert" className="text-destructive">{id.lastCheckError}</p>}
             <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-2">Updates
@@ -100,7 +102,7 @@ export function UpdatesAdmin({ initial }: { initial: UpdatesView | null }) {
 
       <section className="rounded-2xl border bg-card">
         <div className="border-b px-5 py-3.5 text-sm font-semibold">AI capabilities</div>
-        <p className="px-5 pt-3 text-xs text-muted-foreground">Choose which roles may use each capability on Settings &gt; Permissions (module “AI Capabilities”), and which Apps it appears in here. A capability never gives anyone more access than their own role already has.</p>
+        <p className="px-5 pt-3 text-xs text-muted-foreground">Choose which Apps each capability appears in here. Which roles may use it is set on the <Link href="/settings/permissions" className="underline underline-offset-4 hover:text-foreground">Permissions</Link> page, where each installed capability is listed under “AI Capabilities”. A capability never gives anyone more access than their own role already has.</p>
         {v.capabilities.length === 0 ? <p className="px-5 py-8 text-center text-sm text-muted-foreground">No capabilities are installed.</p> : (
           <ul className="divide-y">
             {v.capabilities.map((c) => (

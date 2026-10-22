@@ -1,5 +1,10 @@
 {
 	email {$ACME_EMAIL}
+	servers {
+		# A request whose Host header is not the site it reached over TLS (Host: evil.example on a connection made to this site) is
+		# refused with 421 Misdirected Request, instead of Caddy's empty 200 for a host it has no site for (QA DEF-46).
+		strict_sni_host on
+	}
 }
 
 {$DIGI_DOMAIN} {
@@ -33,9 +38,16 @@ Disallow: /
 		respond "Forbidden" 403
 	}
 
-	# API paths always answer in JSON, like the portal's own errors ({"error": ...}). The portal sends its HTML 404 page for an API
-	# path it has no route for, and an empty 405 for a method a route does not take; "code" tells these apart from "no such record".
+	# API paths always answer in JSON, like the portal's own errors ({"error": ...}). The portal now does this itself; this stays for an
+	# older portal image, whose HTML 404 page for an API path with no route is turned into JSON. "code" tells it apart from "no such record".
 	handle /api/* {
+		# Never cached, including answers made here or by an older portal image that sets no Cache-Control (QA DEF-56).
+		header ?Cache-Control "no-store"
+		# A method the portal never implements (TRACE, PURGE, made-up ones) is 501 in JSON. The portal's server would answer TRACE with a 500
+		# and a made-up method with an empty 400 before the portal sees it. A method a route does not take is the portal's 405, with Allow.
+		@odd_method not method GET HEAD POST PUT PATCH DELETE OPTIONS
+		header @odd_method Content-Type "application/json"
+		respond @odd_method `{"error":"The API does not support {method}.","code":"method_not_implemented"}` 501
 		reverse_proxy portal:3000 {
 			@no_route {
 				status 404
@@ -44,11 +56,6 @@ Disallow: /
 			handle_response @no_route {
 				header Content-Type "application/json"
 				respond `{"error":"No such API endpoint.","code":"no_such_endpoint"}` 404
-			}
-			@no_method status 405
-			handle_response @no_method {
-				header Content-Type "application/json"
-				respond `{"error":"This API endpoint does not accept {method}.","code":"method_not_allowed"}` 405
 			}
 		}
 	}

@@ -8,8 +8,9 @@
 import { useSyncExternalStore } from "react";
 import type { ChatSummary } from "./conversations";
 
-type State = { chats: ChatSummary[]; favorites: string[]; hydrated: boolean };
-const EMPTY: State = { chats: [], favorites: [], hydrated: false };
+/** failed: the last load of the conversations did not succeed, so an empty list means "unknown", not "none" (QA DEF-52). */
+type State = { chats: ChatSummary[]; favorites: string[]; hydrated: boolean; failed: boolean };
+const EMPTY: State = { chats: [], favorites: [], hydrated: false, failed: false };
 
 let state: State = EMPTY;
 let scope = "";
@@ -34,11 +35,14 @@ async function load() {
   try {
     const [c, f] = await Promise.all([fetch("/api/conversations"), fetch("/api/favorites")]);
     if (mine !== scope) return; // someone else signed in meanwhile
-    const chats = c.ok ? ((await c.json()) as { chats: ChatSummary[] }).chats : [];
-    const favorites = f.ok ? ((await f.json()) as { favorites: string[] }).favorites : [];
-    set({ chats, favorites, hydrated: true });
-  } catch {
-    if (mine === scope) set({ ...state, hydrated: true });
+    // a failed load keeps what was already shown instead of replacing it with nothing
+    if (!c.ok) console.error(`Loading conversations failed (HTTP ${c.status})`);
+    const chats = c.ok ? ((await c.json()) as { chats: ChatSummary[] }).chats : state.chats;
+    const favorites = f.ok ? ((await f.json()) as { favorites: string[] }).favorites : state.favorites;
+    set({ chats, favorites, hydrated: true, failed: !c.ok });
+  } catch (e) {
+    console.error("Loading conversations failed", e);
+    if (mine === scope) set({ ...state, hydrated: true, failed: true });
   }
 }
 
@@ -77,6 +81,9 @@ export async function toggleFavorite(agentId: string) {
   if (res?.ok) set({ ...state, favorites: ((await res.json()) as { favorites: string[] }).favorites });
   else set(before);
 }
+
+/** The name shown for a conversation whose worker is no longer offered (QA DEF-07). It can still be read, not continued. */
+export const RETIRED_WORKER = "Retired worker";
 
 /** Conversations that have at least one message, newest first. */
 export const visibleChats = (chats: ChatSummary[]) => [...chats].filter((c) => c.messageCount > 0).sort((a, b) => b.updatedAt - a.updatedAt);

@@ -59,7 +59,7 @@ export function HomeLanding({ hero, firstName }: { hero: Agent | null; firstName
             {greeting}{firstName ? `, ${firstName}` : ""}
           </h1>
           <p className="max-w-2xl text-lg leading-relaxed text-muted-foreground">
-            Ask <strong className="font-semibold text-foreground">Digi</strong>, Your <Hl>D</Hl>igital <Hl>I</Hl>nstitutional <Hl>G</Hl>ateway for <Hl>I</Hl>nformation about events, game days and rooms. It brings in the right worker when you need one.
+            Ask <strong className="font-semibold text-foreground">Digi</strong>, your <Hl>D</Hl>igital <Hl>I</Hl>nstitutional <Hl>G</Hl>ateway for <Hl>I</Hl>nformation, about events, game days and rooms. It brings in the right worker when you need one.
           </p>
         </div>
 

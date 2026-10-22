@@ -12,6 +12,7 @@ import { toolsFor } from "@/lib/tools/rules";
 import { buildContext } from "@/lib/context-builder";
 import { conversationStore, isId } from "@/lib/conversations";
 import { createExecutionContext } from "@/lib/exec-context";
+import { trackTurn } from "@/lib/live-turns";
 import { isLive, listOwuiAgents } from "@/lib/owui";
 import { runtimeToken } from "@/lib/owui-runtime";
 import { P } from "@/lib/permissions";
@@ -24,11 +25,15 @@ import { getTenant } from "@/lib/tenant";
 
 type Body = { conversationId?: unknown; text?: unknown; app?: unknown };
 const bad = (error: string, status = 400) => Response.json({ error }, { status });
-const SSE_HEADERS = { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no" };
+const SSE_HEADERS = { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-store, no-transform", "X-Accel-Buffering": "no" };
 const FLUSH_MS = 1500;
 const MAX_TEXT = 8000;
 /** Tool modules that carry Digi tools. They are offered only as far as the person may use them (M5.5); the old single bundle id is still recognised. */
 const DIGI_MODULES = new Set(["digi_rooms", "digi_bookings", "digi_approvals", "digi_mcp", "digi_memory", "digi_room_request"]) /* the last is the old single bundle */;
+
+/** An answer that points the person at a confirmation card. Digi sometimes says so without calling the tool that makes one (QA: "Confirmation panel is not displayed"). */
+const CLAIMS_CARD = /\b(press|click|tap)\W{0,3}confirm\b|\b(review|check|see|look for|find|appear)\b[^.]{0,40}confirmation (card|panel)/i;
+const NO_CARD_NOTE = "\n\n_No confirmation card was prepared, so nothing is waiting for you to confirm yet. Reply **show the confirmation card** and Digi will prepare it._";
 
 /** Hidden machine-readable blocks (<!--room-request {...}-->) that forms add for the worker. They are not part of a title. */
 const titleFrom = (text: string) => {
@@ -39,7 +44,8 @@ const titleFrom = (text: string) => {
 /**
  * One AI turn in a conversation. The browser sends only the conversation id and the new message; Digi loads the history from its own
  * database, saves both messages, builds the request, runs it through the runtime adapter and streams events back. The answer is saved as
- * it arrives, so a dropped connection or a Stop never loses what was already said.
+ * it arrives, so a dropped connection never loses what was already said. Stop (POST .../messages/<id>/stop) ends the turn and cuts the saved
+ * answer to what the person saw.
  *
  * Events (server-sent): meta, queued, tool, embed, text, done, error.
  */
@@ -128,11 +134,19 @@ export async function POST(req: Request) {
       let acc = "", label: string | undefined, dirty = false, status: "done" | "stopped" | "error" = "done";
       const embeds: string[] = [];
       let release: (() => void) | undefined;
+      let flushing: Promise<unknown> = Promise.resolve();
       const flush = () => {
         if (!dirty) return;
         dirty = false;
-        void store.updateMessage(owner, conv.id, asstMsg.id, { content: acc, toolLabel: label ?? null, embeds }).catch(() => undefined);
+        flushing = store.updateMessage(owner, conv.id, asstMsg.id, { content: acc, toolLabel: label ?? null, embeds }).catch(() => undefined);
       };
+      // Stop from the browser: how much of the answer the person saw, so nothing they did not see is saved
+      let shown: number | undefined, saving = false, markSaved = () => {};
+      const untrack = trackTurn(asstMsg.id, {
+        userId: user.id,
+        stop: (n) => { if (saving) return false; shown = n; ctl.abort(); return true; },
+        saved: new Promise<void>((r) => { markSaved = r; }),
+      });
       const timer = setInterval(flush, FLUSH_MS);
 
       const t0 = Date.now();
@@ -169,6 +183,11 @@ export async function POST(req: Request) {
           }
           else if (ev.type === "completed") { usage = ev.usage; break; }
         }
+        // Never leave someone looking for a card that does not exist: if the answer points at one and none is waiting in this conversation, say so.
+        if (status === "done" && !ctl.signal.aborted && authLive() && CLAIMS_CARD.test(acc)) {
+          const waiting = (await actionsForConversation(user.tenantId, user.id, conv.id).catch(() => null))?.some((a) => a.status === "pending");
+          if (waiting === false) { acc += NO_CARD_NOTE; dirty = true; send({ type: "text", delta: NO_CARD_NOTE }); }
+        }
         if (ctl.signal.aborted) status = "stopped";
       } catch (e) {
         if (e instanceof BusyError) {
@@ -185,7 +204,12 @@ export async function POST(req: Request) {
       } finally {
         clearInterval(timer);
         release?.();
+        saving = true;
+        if (shown !== undefined) { status = "stopped"; acc = acc.slice(0, shown); }
+        await flushing;
         await store.updateMessage(owner, conv.id, asstMsg.id, { content: acc, status, toolLabel: label ?? null, embeds }).catch((e) => console.error("saving the answer failed", e));
+        markSaved();
+        untrack();
         if (runId) {
           await sendActions();
           await finishRun(user.tenantId, runId, { status, error: failure, queueMs, durationMs: Date.now() - t0, outputChars: acc.length, tokensIn: usage?.tokensIn, tokensOut: usage?.tokensOut }).catch((e) => console.error("saving the run failed", e));
