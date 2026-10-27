@@ -2,6 +2,7 @@ import {
   BookingError, cancelBooking, createBooking, describeOverride, getBuildings, getRooms, listBookings, overrideConflict, searchAvailable, type Actor,
 } from "../booking-service";
 import { P, type PermissionCode } from "../permissions";
+import { EventSearchError, searchEvents } from "../campus-events";
 import { checkInvite, InviteError, sendInvite } from "../event-invites";
 import { MailError } from "../mail";
 import { addMemory } from "../memory";
@@ -120,6 +121,18 @@ const TOOLS: ToolDef[] = [
     async commit(actor, a) {
       const b = await cancelBooking(actor, str(a.id, 40));
       return { ref: b.ref, status: b.status };
+    },
+  },
+  {
+    // What is on around campus: anyone who can use Digi may ask, the same as reading the public events calendar.
+    id: "events.search", description: "Find campus events", risk: "read", permission: P.chatUse, owuiToolId: "digi_events",
+    async run(actor, a) {
+      try {
+        return await searchEvents(actor.tenantId, { from: str(a.from_date, 10), to: str(a.to_date, 10), text: str(a.query, 100), includeClasses: a.include_classes === true });
+      } catch (e) {
+        if (e instanceof EventSearchError) throw new ToolError(e.message);
+        throw e;
+      }
     },
   },
   {

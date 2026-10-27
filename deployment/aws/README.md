@@ -156,7 +156,16 @@ Run from the `deployment/aws` folder. `.env` and the data volumes are never touc
 4. If the update changed Digi's instructions (listed under **This update**), add the new lines by hand in Open WebUI > Workspace > Models > Digi > System prompt. `connect-owui.py` never changes the prompt of an existing Digi.
 5. Check: sign in, open **Settings > AI connection** (Open WebUI should show as connected), and ask Digi a question in **New chat**.
 
-### This update: same room form everywhere, booking email fixes
+### This update: Digi can answer questions about campus events
+- Portal image: a new read-only tool, `events.search`, looks up the events imported into Digi by date or name (campus time; classes only when asked). Anyone who can use Digi may use it, Faculty and Students included. Faculty booking access is unchanged: they request, view, change and cancel their own bookings, and cannot see other people's or approve. One small database migration (`0016_events_search.sql`) runs by itself at start.
+- Tool modules: `digi_events` (new `search_events`). Run step 3 with `--update digi_events`.
+- Digi's instructions: add this section above "Calendar invites" (step 4):
+  > Campus events (you have a tool for this)
+  > - When someone asks what is happening on campus, about an event, or about a game day, call search_events with the dates and any name words they gave, and answer only from what it returns.
+  > - If it finds nothing, say Digi has no events listed for those dates and suggest Student Life (events) or Athletics (games).
+- Answers come only from the imported events; if the Supabase import has not been run, Digi says none are listed.
+
+### Earlier update: same room form everywhere, booking email fixes
 - Portal image:
   - The **Request a room** page (Bookings > + Request a room) now has the same form as the one Digi shows in chat.
   - **Settings > Notifications** has a sliding on/off switch for room booking emails, and no Calendar invites option: invites are sent whenever email is set up, after the person confirms them in chat.
