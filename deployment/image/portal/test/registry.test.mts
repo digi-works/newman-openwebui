@@ -4,6 +4,7 @@ import { describe, test } from "node:test";
 
 for (const k of ["MS_TENANT_ID", "MS_CLIENT_ID", "MS_CLIENT_SECRET", "MAIL_FROM"]) delete process.env[k];
 const { getTool, allTools, ToolError } = await import("@/lib/tools/registry");
+const { authorize } = await import("@/lib/authority");
 
 const repo = new URL("../../../", import.meta.url); // deployment/
 const read = (p: string) => readFileSync(new URL(p, repo), "utf8");
@@ -31,6 +32,33 @@ describe("the events.invite tool", () => {
   });
 });
 
+describe("the events.search tool", () => {
+  const tool = getTool("events.search");
+  // The Faculty role as ensure_default_roles creates it (0006_rooms_bookings.sql).
+  const faculty = { kind: "user" as const, id: "f1", permissions: ["chat.use", "bookings.view_own", "bookings.create", "bookings.update", "bookings.delete"] };
+  const allowed = (id: string) => {
+    const t = getTool(id)!;
+    return authorize(faculty, { name: t.id, permission: t.permission, risk: t.risk, policy: "allow", enabled: true }).decision !== "DENY";
+  };
+
+  test("is a read tool guarded by chat.use, carried by digi_events", () => {
+    assert.ok(tool);
+    assert.equal(tool.risk, "read");
+    assert.equal(tool.permission, "chat.use");
+    assert.equal(tool.owuiToolId, "digi_events");
+    assert.equal(typeof tool.run, "function");
+  });
+
+  test("a bad date is refused with a message the person can act on", async () => {
+    await assert.rejects(tool!.run!(actor, { from_date: "next week" }), (e: unknown) => e instanceof ToolError && /YYYY-MM-DD/.test(e.message));
+  });
+
+  test("Faculty can look up events and request rooms, but not see the approval queue", () => {
+    for (const id of ["events.search", "rooms.form", "rooms.search", "bookings.request", "bookings.list", "bookings.cancel"]) assert.ok(allowed(id), id);
+    assert.equal(allowed("approvals.queue"), false);
+  });
+});
+
 describe("the pieces that must agree with each other", () => {
   test("the migration registers events.invite exactly as the code declares it", () => {
     const sql = read("image/portal/db/migrations/0014_booking_emails.sql");
@@ -39,6 +67,15 @@ describe("the pieces that must agree with each other", () => {
   test("the migration creates notification_settings with row-level security for the app role", () => {
     const sql = read("image/portal/db/migrations/0014_booking_emails.sql");
     for (const s of ["create table notification_settings", "enable row level security", "force row level security", "create policy tenant_isolation on notification_settings", "grant select, insert, update, delete on notification_settings to digi_app"]) assert.ok(sql.includes(s), s);
+  });
+  test("the migration registers events.search exactly as the code declares it", () => {
+    const sql = read("image/portal/db/migrations/0016_events_search.sql");
+    assert.match(sql, /\('events\.search', 'tool', '[^']+', '[^']+', 'read', 'chat\.use', 'digi_events'\)/);
+  });
+  test("the Open WebUI module calls events.search with the argument names the tool reads", () => {
+    const py = read("aws/owui-tools/digi_events.py");
+    assert.match(py, /\/api\/internal\/tools\/events\.search/);
+    for (const k of ["from_date", "to_date", "query", "include_classes"]) assert.match(py, new RegExp(`"${k}": ${k}`), k);
   });
   test("the Open WebUI module calls events.invite with the argument names the tool reads", () => {
     const py = read("aws/owui-tools/digi_events.py");
