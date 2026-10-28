@@ -122,7 +122,7 @@ export function RoomRequestForm({ buildings, needs, today }: { buildings: string
             <div className="space-y-2">
               <label htmlFor="people" className="text-sm font-medium">How many people?</label>
               <div className="relative">
-                <Input id="people" name="people" type="number" required min={1} max={500} defaultValue={6} className={cn(field, "pr-28")} aria-invalid={bad("people")} />
+                <Input id="people" name="people" type="number" required min={1} max={500} defaultValue={6} className={cn(field, "pr-28 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none")} aria-invalid={bad("people")} />
                 <div className="absolute top-1.5 right-2 flex gap-1.5">
                   <Button type="button" variant="outline" size="sm" aria-label="Fewer people" onClick={() => step(-1)}><Minus /></Button>
                   <Button type="button" variant="outline" size="sm" aria-label="More people" onClick={() => step(1)}><Plus /></Button>
