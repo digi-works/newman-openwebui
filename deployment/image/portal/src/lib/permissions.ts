@@ -10,6 +10,7 @@ export const P = {
   bookingsUpdate: "bookings.update",
   bookingsDelete: "bookings.delete",
   bookingsApprove: "bookings.approve",
+  bookingsApproveOwn: "bookings.approve_own",
   usersView: "users.view",
   usersCreate: "users.create",
   usersUpdate: "users.update",

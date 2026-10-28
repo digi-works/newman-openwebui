@@ -29,8 +29,8 @@ const OWN_TEXT: Record<string, { label: string; title: string; blurb: string }> 
   declined: { label: "Closed", title: "Closed", blurb: "Your requests that were declined, cancelled or expired." },
 };
 
-export function BookingsView({ bookings, today, canDecide, canEdit, canCancel, canRequest, ownOnly = false, viewer }: {
-  bookings: Booking[]; today: string; canDecide: boolean; canEdit: boolean; canCancel: boolean; canRequest: boolean; ownOnly?: boolean; viewer: { id: string; email: string };
+export function BookingsView({ bookings, today, canDecide, canDecideOwn, canEdit, canCancel, canRequest, ownOnly = false, viewer }: {
+  bookings: Booking[]; today: string; canDecide: boolean; canDecideOwn: boolean; canEdit: boolean; canCancel: boolean; canRequest: boolean; ownOnly?: boolean; viewer: { id: string; email: string };
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -125,7 +125,7 @@ export function BookingsView({ bookings, today, canDecide, canEdit, canCancel, c
       <BookingDialog
         booking={open}
         viewer={viewer}
-        can={{ decide: canDecide, edit: canEdit, cancel: canCancel }}
+        can={{ decide: canDecide, decideOwn: canDecideOwn, edit: canEdit, cancel: canCancel }}
         onClose={() => setOpenId(null)}
         onChanged={(message) => { setOpenId(null); setNotice(message); router.refresh(); }}
       />

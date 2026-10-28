@@ -54,7 +54,7 @@ export function ApprovalsView({ initial, rooms: initialRooms = [] }: { initial: 
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Approvals</h1>
-        <p className="text-sm text-muted-foreground">Room requests and other actions that need another person to say yes before they happen. You cannot decide your own.</p>
+        <p className="text-sm text-muted-foreground">Room requests and other actions that need another person to say yes before they happen.</p>
       </div>
       {error && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
       {rooms.length > 0 && (
