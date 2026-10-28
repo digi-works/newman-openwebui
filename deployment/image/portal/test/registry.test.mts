@@ -98,6 +98,12 @@ describe("the pieces that must agree with each other", () => {
     assert.match(caddy, /^\s*-Via$/m);
     assert.match(caddy, /^\s*-Server$/m);
   });
+  test("list_bookings tells Digi who requested each booking, as the Bookings page does (QA DEF-61)", () => {
+    assert.match(read("image/portal/src/lib/tools/registry.ts"), /status: s, requestedBy, email \}\)\);/);
+    const py = read("aws/owui-tools/digi_bookings.py");
+    assert.match(py, /requested by \{i\.get\('requestedBy'\)/);
+    assert.match(py, /\(\{i\.get\('email'\)/);
+  });
   test("docker-compose passes every email setting the portal reads", () => {
     const compose = read("aws/docker-compose.yml");
     for (const k of ["MS_TENANT_ID", "MS_CLIENT_ID", "MS_CLIENT_SECRET", "MAIL_FROM", "BOOKING_MANAGER_EMAIL"]) assert.match(compose, new RegExp(`${k}: "\\$\\{${k}:-\\}"`), k);

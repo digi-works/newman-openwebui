@@ -163,6 +163,7 @@ Run from the `deployment/aws` folder. `.env` and the data volumes are never touc
   curl -sI https://your.domain/login | grep -iE 'strict-transport|content-security|via|powered'
   ```
   Expected: the first two lines only.
+- Tool modules: `digi_bookings` (`list_bookings` now says who requested each booking, so Digi can answer "who requested BK-…", QA DEF-61). Run step 3 with `--update digi_bookings`.
 
 ### Earlier update: Digi can answer questions about campus events
 - Portal image: a new read-only tool, `events.search`, looks up the events imported into Digi by date or name (campus time; classes only when asked). Anyone who can use Digi may use it, Faculty and Students included. Faculty booking access is unchanged: they request, view, change and cancel their own bookings, and cannot see other people's or approve. One small database migration (`0016_events_search.sql`) runs by itself at start.
