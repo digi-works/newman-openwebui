@@ -8,6 +8,8 @@ const CSP = `default-src 'self'; script-src 'self' 'unsafe-inline'${process.env.
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // No "X-Powered-By: Next.js": responses do not say what the site is built with (QA DEF-08).
+  poweredByHeader: false,
   async headers() {
     return [
       {

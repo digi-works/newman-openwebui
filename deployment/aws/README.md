@@ -156,7 +156,15 @@ Run from the `deployment/aws` folder. `.env` and the data volumes are never touc
 4. If the update changed Digi's instructions (listed under **This update**), add the new lines by hand in Open WebUI > Workspace > Models > Digi > System prompt. `connect-owui.py` never changes the prompt of an existing Digi.
 5. Check: sign in, open **Settings > AI connection** (Open WebUI should show as connected), and ask Digi a question in **New chat**.
 
-### This update: Digi can answer questions about campus events
+### This update: Admins approve their own requests, security headers
+- Portal image: Admins can approve or decline their own room requests; other roles can once an Admin turns on **Approve own requests** for them in Settings > Permissions (migration `0017_approve_own_bookings.sql` runs by itself at start). The portal now sends `Strict-Transport-Security` and `Content-Security-Policy` itself (QA DEF-06) and no longer sends `X-Powered-By: Next.js` (QA DEF-08).
+- `Caddyfile`: drops Caddy's `Via: 1.1 Caddy` header and any `Server` header (QA DEF-08). Reload Caddy (step 2). Servers that never reloaded Caddy after the earlier QA fixes also get its `/robots.txt`, `/sitemap.xml` and JSON API errors from this reload. Check:
+  ```bash
+  curl -sI https://your.domain/login | grep -iE 'strict-transport|content-security|via|powered'
+  ```
+  Expected: the first two lines only.
+
+### Earlier update: Digi can answer questions about campus events
 - Portal image: a new read-only tool, `events.search`, looks up the events imported into Digi by date or name (campus time; classes only when asked). Anyone who can use Digi may use it, Faculty and Students included. Faculty booking access is unchanged: they request, view, change and cancel their own bookings, and cannot see other people's or approve. One small database migration (`0016_events_search.sql`) runs by itself at start.
 - Tool modules: `digi_events` (new `search_events`). Run step 3 with `--update digi_events`.
 - Digi's instructions: add this section above "Calendar invites" (step 4):

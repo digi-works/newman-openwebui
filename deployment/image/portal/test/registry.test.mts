@@ -92,6 +92,12 @@ describe("the pieces that must agree with each other", () => {
     assert.equal(next.match(/const HSTS = "([^"]+)"/)?.[1], fromCaddy("Strict-Transport-Security"));
     assert.equal(next.match(/const CSP = `([^`]+)`/)?.[1].replace(/\$\{[^}]+\}/, ""), fromCaddy("Content-Security-Policy"));
   });
+  test("neither the portal nor Caddy says what the site runs on (QA DEF-08)", () => {
+    assert.match(read("image/portal/next.config.ts"), /poweredByHeader: false/);
+    const caddy = read("aws/Caddyfile");
+    assert.match(caddy, /^\s*-Via$/m);
+    assert.match(caddy, /^\s*-Server$/m);
+  });
   test("docker-compose passes every email setting the portal reads", () => {
     const compose = read("aws/docker-compose.yml");
     for (const k of ["MS_TENANT_ID", "MS_CLIENT_ID", "MS_CLIENT_SECRET", "MAIL_FROM", "BOOKING_MANAGER_EMAIL"]) assert.match(compose, new RegExp(`${k}: "\\$\\{${k}:-\\}"`), k);
