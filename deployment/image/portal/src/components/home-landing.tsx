@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { ArrowUp, CalendarDays, DoorOpen, Trophy, type LucideIcon } from "lucide-react";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { Button } from "@/components/ui/button";
@@ -20,14 +20,21 @@ function Hl({ children }: { children: React.ReactNode }) {
   return <span className="font-bold text-[oklch(0.5_0.17_22)] dark:text-[oklch(0.78_0.12_22)]">{children}</span>;
 }
 
+const noSubscribe = () => () => {};
+// the browser's day and hour as one string, so the snapshot stays equal between renders
+const localClock = () => {
+  const d = new Date();
+  return `${d.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long" })}|${d.getHours()}`;
+};
+
 export function HomeLanding({ hero, firstName }: { hero: Agent | null; firstName: string }) {
   const router = useRouter();
   const [text, setText] = useState("");
-  const now = new Date();
-  // Campus time on the server and in the browser, so both render the same day and greeting (QA DEF-19).
-  const hour = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: "America/Chicago" }).format(now));
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  const today = now.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", timeZone: "America/Chicago" });
+  // The viewer's own clock, read only in the browser: the server (UTC) never renders a day or greeting
+  // that would then change on load (QA DEF-19); they stay hidden until the browser fills them in.
+  const clock = useSyncExternalStore(noSubscribe, localClock, () => null);
+  const [today, hour] = clock ? clock.split("|") : ["\u00a0", "0"];
+  const greeting = Number(hour) < 12 ? "Good morning" : Number(hour) < 18 ? "Good afternoon" : "Good evening";
 
   async function ask(prompt: string) {
     const p = prompt.trim();
@@ -51,11 +58,11 @@ export function HomeLanding({ hero, firstName }: { hero: Agent | null; firstName
 
       <div className="mx-auto w-full max-w-3xl space-y-8">
         <div className="space-y-4">
-          <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground" suppressHydrationWarning>
+          <p className={cn("flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground", !clock && "invisible")}>
             <span className="size-1.5 rounded-full bg-[oklch(0.5_0.17_22)]" />
             {today}
           </p>
-          <h1 className="text-5xl font-semibold leading-[1.05] tracking-tight text-primary sm:text-6xl" suppressHydrationWarning>
+          <h1 className={cn("text-5xl font-semibold leading-[1.05] tracking-tight text-primary sm:text-6xl", !clock && "invisible")}>
             {greeting}{firstName ? `, ${firstName}` : ""}
           </h1>
           <p className="max-w-2xl text-lg leading-relaxed text-muted-foreground">

@@ -2,7 +2,7 @@
 title: Digi Bookings
 author: Digiworks
 description: A person's bookings, plus requests and cancellations that Digi prepares and the person confirms in Digi.
-version: 0.3.0
+version: 0.4.0
 """
 
 from typing import Optional
@@ -39,7 +39,7 @@ class Tools:
     def list_bookings(self, date: str = "", status: str = "", __metadata__: Optional[dict] = None) -> str:
         """
         List room bookings. People who may not see every booking get only their own. Use for "what is booked on 2026-10-14",
-        "which requests are still waiting" or "my bookings". Read only.
+        "which requests are still waiting", "my bookings" or "who requested BK-WTEVG" (each line names the requester). Read only.
         :param date: Date as YYYY-MM-DD, or empty for upcoming.
         :param status: One of Waiting, Confirmed, Declined, Cancelled, Expired, or empty for all.
         """
@@ -55,7 +55,11 @@ class Tools:
         items = body.get("items", [])
         if not items:
             return "No bookings matched."
-        return "\n".join(f"- {i['ref']}: {i['date']} {i['start']} to {i['end']}: {i['room']} ({i['building']}), {i['purpose']}, {SHOWN.get(i['status'], i['status'])}" for i in items[:40])
+        return "\n".join(
+            f"- {i['ref']}: {i['date']} {i['start']} to {i['end']}: {i['room']} ({i['building']}), {i['purpose']}, {SHOWN.get(i['status'], i['status'])}, "
+            f"requested by {i.get('requestedBy') or 'unknown'} ({i.get('email') or 'no email'})"
+            for i in items[:40]
+        )
 
     def request_room(
         self, room: str, purpose: str, date: str, start_time: str, end_time: str, people: int, needs: str = "", __metadata__: Optional[dict] = None

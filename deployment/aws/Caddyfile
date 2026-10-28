@@ -14,6 +14,9 @@
 		# Browsers use HTTPS only for this site from now on (one year).
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		# What pages may load. Next.js renders inline scripts and styles, and Digi's in-chat forms (sandboxed iframes) use Google Fonts.
+		# Responses do not say what the site runs on: Caddy's "Via: 1.1 Caddy" and any Server header are dropped (QA DEF-08).
+		-Via
+		-Server
 		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 	}
 

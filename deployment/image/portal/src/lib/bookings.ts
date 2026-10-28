@@ -2,6 +2,8 @@
  * Booking types shared by the service, the API and the pages. Rules and data live in booking-service.ts and Digi's database.
  * Until M4 this file held sample data and a Supabase reader; both are gone.
  */
+import { hasPermission, P } from "./permissions";
+
 export type BookingStatus = "Tentative" | "Confirmed" | "Declined" | "Cancelled" | "Expired";
 
 export type Booking = {
@@ -40,3 +42,7 @@ export type Booking = {
 /** True when the booking was requested by this person: by user id, or by email for rows copied from before M4. */
 export const isOwnBooking = (b: Pick<Booking, "email" | "requesterUserId">, user: { id: string; email: string }) =>
   (b.requesterUserId ? b.requesterUserId === user.id : false) || b.email.trim().toLowerCase() === user.email.trim().toLowerCase();
+
+/** True when this person's own request has to be decided by someone else: they lack "Approve own requests" (Admins hold it). */
+export const needsAnotherApprover = (b: Pick<Booking, "email" | "requesterUserId">, user: { id: string; email: string; permissions: readonly string[] }) =>
+  isOwnBooking(b, user) && !hasPermission(user.permissions, P.bookingsApproveOwn);

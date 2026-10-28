@@ -71,7 +71,8 @@ const TOOLS: ToolDef[] = [
       const items = (await listBookings(actor, viewAll))
         .filter((b) => (date ? b.date === date : b.date >= today))
         .filter((b) => !status || b.status.toLowerCase() === status)
-        .map(({ ref, date: d, start, end, room, building, purpose, status: s }) => ({ ref, date: d, start, end, room, building, purpose, status: s }));
+        // Who asked for it, as the Bookings page's Requester column shows it (QA DEF-61).
+        .map(({ ref, date: d, start, end, room, building, purpose, status: s, requestedBy, email }) => ({ ref, date: d, start, end, room, building, purpose, status: s, requestedBy, email }));
       return { items: items.slice(0, 40) };
     },
   },

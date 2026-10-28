@@ -86,6 +86,24 @@ describe("the pieces that must agree with each other", () => {
     assert.match(read("aws/scripts/install-digi-tools.py"), /\("digi_events", "Digi Events", "digi_events\.py"/);
     assert.match(read("aws/scripts/create-digi.py"), /"toolIds": \[[^\]]*"digi_events"/);
   });
+  test("the portal sends the same HSTS and CSP as the Caddyfile (QA DEF-06)", () => {
+    const caddy = read("aws/Caddyfile"), next = read("image/portal/next.config.ts");
+    const fromCaddy = (k: string) => caddy.match(new RegExp(`${k} "([^"]+)"`))?.[1];
+    assert.equal(next.match(/const HSTS = "([^"]+)"/)?.[1], fromCaddy("Strict-Transport-Security"));
+    assert.equal(next.match(/const CSP = `([^`]+)`/)?.[1].replace(/\$\{[^}]+\}/, ""), fromCaddy("Content-Security-Policy"));
+  });
+  test("neither the portal nor Caddy says what the site runs on (QA DEF-08)", () => {
+    assert.match(read("image/portal/next.config.ts"), /poweredByHeader: false/);
+    const caddy = read("aws/Caddyfile");
+    assert.match(caddy, /^\s*-Via$/m);
+    assert.match(caddy, /^\s*-Server$/m);
+  });
+  test("list_bookings tells Digi who requested each booking, as the Bookings page does (QA DEF-61)", () => {
+    assert.match(read("image/portal/src/lib/tools/registry.ts"), /status: s, requestedBy, email \}\)\);/);
+    const py = read("aws/owui-tools/digi_bookings.py");
+    assert.match(py, /requested by \{i\.get\('requestedBy'\)/);
+    assert.match(py, /\(\{i\.get\('email'\)/);
+  });
   test("docker-compose passes every email setting the portal reads", () => {
     const compose = read("aws/docker-compose.yml");
     for (const k of ["MS_TENANT_ID", "MS_CLIENT_ID", "MS_CLIENT_SECRET", "MAIL_FROM", "BOOKING_MANAGER_EMAIL"]) assert.match(compose, new RegExp(`${k}: "\\$\\{${k}:-\\}"`), k);

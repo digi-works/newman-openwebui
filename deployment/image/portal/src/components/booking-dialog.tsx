@@ -22,7 +22,7 @@ export const STATUS_STYLE: Record<BookingStatus, string> = {
 /** Waiting requests read better as "Waiting" than the internal word "Tentative". */
 export const STATUS_LABEL: Record<BookingStatus, string> = { Tentative: "Waiting", Confirmed: "Confirmed", Declined: "Declined", Cancelled: "Cancelled", Expired: "Expired" };
 
-export type DialogAbilities = { decide: boolean; edit: boolean; cancel: boolean };
+export type DialogAbilities = { decide: boolean; decideOwn: boolean; edit: boolean; cancel: boolean };
 
 const fmt = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
@@ -157,8 +157,8 @@ function Body({ booking: b, viewer, can, onClose, onChanged }: {
           <Rows rows={[["Room name", b.room], ["Capacity", b.capacity], ["Features", b.features]]} />
         </Section>
 
-        {/* An approver decides someone else's waiting request. */}
-        {waiting && can.decide && !own && (
+        {/* An approver decides someone else's waiting request, and their own too with "Approve own requests" (Admins). */}
+        {waiting && can.decide && (!own || can.decideOwn) && (
           <section className="rounded-xl border border-primary/40 bg-accent/40 p-5">
             <h3 className="text-sm font-semibold">Decision</h3>
             <label htmlFor="reason" className="mt-3 block text-sm font-medium">Reason <span className="text-destructive">*</span></label>
@@ -183,7 +183,7 @@ function Body({ booking: b, viewer, can, onClose, onChanged }: {
           <section className="rounded-xl border bg-muted/40 p-5">
             <h3 className="text-sm font-semibold">Your request</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              {can.decide ? "You made this request, so another approver has to decide it." : "This request is waiting for a decision from an approver."}
+              {can.decide && can.decideOwn ? "You made this request. You can approve or decline it above." : can.decide ? "You made this request, so another approver has to decide it." : "This request is waiting for a decision from an approver."}
             </p>
             {can.edit && (
               <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_8rem]">
@@ -191,7 +191,8 @@ function Body({ booking: b, viewer, can, onClose, onChanged }: {
                 <div className="space-y-1.5"><label htmlFor="attendees" className="text-sm font-medium">People</label><Input id="attendees" type="number" min={1} value={attendees} onChange={(e) => { setAttendees(e.target.value); setError(""); }} /></div>
               </div>
             )}
-            {error && <p role="alert" className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+            {/* when the Decision box is shown above, the error is shown there */}
+            {error && !(can.decide && can.decideOwn) && <p role="alert" className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
             {(can.edit || can.cancel) && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {can.edit && <Button disabled={!!busy} onClick={save}>{busy === "save" && <Loader2 className="animate-spin" />} Save changes</Button>}

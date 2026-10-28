@@ -1,7 +1,7 @@
 import type { PoolClient } from "pg";
 import { auditEvent } from "./audit";
 import { queueBookingEmail, queueExpiryEmails } from "./booking-emails";
-import { isOwnBooking, type Booking, type BookingStatus } from "./bookings";
+import { isOwnBooking, needsAnotherApprover, type Booking, type BookingStatus } from "./bookings";
 import { withTenant } from "./digi-db";
 import { hasPermission, P } from "./permissions";
 import { hhmm, searchRooms, tagsFrom, to12h, toMinutes, type Room } from "./rooms";
@@ -10,7 +10,7 @@ import { hhmm, searchRooms, tagsFrom, to12h, toMinutes, type Room } from "./room
  * Room booking rules, in one place (architecture v0.3 section 5). One person requests, another decides.
  * - A pending request holds its slot (the database refuses overlaps) until it is decided or expires after the tenant's number of days (7).
  * - Approving rechecks that no event took the room, in the same transaction, and a version number stops two approvers deciding at once.
- * - Nobody decides their own request. Every change writes a booking_events row and an audit row, and tells the requester in the app
+ * - Nobody decides their own request, unless their role has "Approve own requests" (Admins do). Every change writes a booking_events row and an audit row, and tells the requester in the app
  *   (and by email when the organisation has switched room booking emails on, see booking-emails.ts).
  * Callers pass the person acting with permissions read live from the database; this module still checks them.
  */
@@ -258,7 +258,7 @@ export async function decideBooking(actor: Actor, id: string, decision: "approve
   if (!note) throw new BookingError("Add a short reason for this decision.");
   return withTenant(actor.tenantId, async (c) => {
     const { tz, booking } = await loadForChange(c, actor, id);
-    if (isOwnBooking(booking, actor)) throw new BookingError("You cannot decide your own request. Another approver needs to.", 403);
+    if (needsAnotherApprover(booking, actor)) throw new BookingError("You cannot decide your own request. Another approver needs to.", 403);
     if (booking.status !== "Tentative") throw new BookingError(`This request is already ${booking.status.toLowerCase()}.`, 409);
     if (expectedVersion !== undefined && expectedVersion !== booking.version) throw new BookingError("Someone changed this request while you had it open. Refresh and try again.", 409);
 

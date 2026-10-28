@@ -28,7 +28,7 @@ export default async function BookingsPage() {
     <div className="p-4 md:p-8">
       <BookingsView
         bookings={bookings} today={today} ownOnly={!viewAll} viewer={{ id: user.id, email: user.email }}
-        canDecide={can(user, P.bookingsApprove)} canEdit={can(user, P.bookingsUpdate)} canCancel={can(user, P.bookingsDelete)} canRequest={can(user, P.bookingsCreate)}
+        canDecide={can(user, P.bookingsApprove)} canDecideOwn={can(user, P.bookingsApproveOwn)} canEdit={can(user, P.bookingsUpdate)} canCancel={can(user, P.bookingsDelete)} canRequest={can(user, P.bookingsCreate)}
       />
     </div>
   );
