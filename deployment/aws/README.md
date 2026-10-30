@@ -164,6 +164,12 @@ Run from the `deployment/aws` folder. `.env` and the data volumes are never touc
   curl -sI https://your.domain/login | grep -iE 'strict-transport|content-security|via|powered'
   ```
   Expected: the first two lines only. Also `curl -s https://your.domain/robots.txt` answers `User-agent: *` / `Disallow: /` in plain text.
+- `Caddyfile`: a request for any other Host is refused with `421 Misdirected Request` on plain HTTP too. Before, port 80 redirected it to `https://<that host>` (QA DEF-46); the site's own address still goes to HTTPS. Over HTTPS, `strict_sni_host` (already in the file) now takes effect with the mount fix above. Check:
+  ```bash
+  curl -si -H 'Host: evil.example.com' https://your.domain/login | head -1   # HTTP/2 421
+  curl -si -H 'Host: evil.example.com' http://your.domain/login | head -1    # HTTP/1.1 421 Misdirected Request
+  curl -si http://your.domain/login | grep -i '^location'                     # https://your.domain/login
+  ```
 - Tool modules: `digi_bookings` (`list_bookings` now says who requested each booking, so Digi can answer "who requested BK-…", QA DEF-61). Run step 3 with `--update digi_bookings`.
 
 ### Earlier update: Digi can answer questions about campus events

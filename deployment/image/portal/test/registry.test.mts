@@ -104,6 +104,15 @@ describe("the pieces that must agree with each other", () => {
     assert.match(read("image/portal/src/app/robots.txt/route.ts"), /"User-agent: \*\\nDisallow: \/\\n"/);
     assert.match(read("image/portal/src/app/sitemap.xml/route.ts"), /status: 404/);
   });
+  test("Caddy refuses a Host that is not this site, over HTTPS and plain HTTP, instead of redirecting to it (QA DEF-46)", () => {
+    const caddy = read("aws/caddy/Caddyfile");
+    assert.match(caddy, /^\s*strict_sni_host on$/m);
+    assert.match(caddy, /^\s*auto_https disable_redirects$/m);
+    const http = caddy.match(/^http:\/\/ \{\n([\s\S]*?)\n\}/m)?.[1] ?? "";
+    assert.match(http, /redir @site https:\/\/\{\$DIGI_DOMAIN\}\{uri\} 308/);
+    assert.match(http, /respond "Misdirected Request" 421/);
+    assert.doesNotMatch(http, /\{(http\.request\.)?host\}/);
+  });
   test("Caddy's config is mounted as a folder, so a reload after git pull reads the new Caddyfile (QA DEF-08)", () => {
     const compose = read("aws/docker-compose.yml");
     assert.match(compose, /- \.\/caddy:\/etc\/caddy:ro/);
