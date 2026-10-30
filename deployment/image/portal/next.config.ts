@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 // HSTS and CSP are sent by the portal itself, not only by the Caddyfile: a server that only loads a new image and keeps an older
-// Caddyfile still gets them (QA DEF-06). Same values as deployment/aws/Caddyfile; test/registry.test.mts checks they agree.
+// Caddyfile still gets them (QA DEF-06). Same values as deployment/aws/caddy/Caddyfile; test/registry.test.mts checks they agree.
 // Next.js renders inline scripts and styles, and Digi's in-chat forms (sandboxed iframes) use Google Fonts. next dev also needs eval.
 const HSTS = "max-age=31536000; includeSubDomains";
 const CSP = `default-src 'self'; script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'`;

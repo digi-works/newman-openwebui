@@ -1,12 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export function LoginForm({ org }: { org: string }) {
+export function LoginForm({ org, passwordReset = false }: { org: string; passwordReset?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -14,8 +15,6 @@ export function LoginForm({ org }: { org: string }) {
   const [badFields, setBadFields] = useState(false);
   const fieldProps = badFields ? { "aria-invalid": true, "aria-describedby": "login-error" } : {};
   const edited = () => { if (badFields) setBadFields(false); };
-  // Digi cannot send email, so recovery is an Admin's Reset password (QA DEF-30); this says how to ask for it.
-  const [forgot, setForgot] = useState(false);
 
   async function signIn(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -58,14 +57,13 @@ export function LoginForm({ org }: { org: string }) {
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label htmlFor="password" className="text-sm font-medium">Password</label>
-            <button type="button" aria-expanded={forgot} onClick={() => setForgot((v) => !v)} className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Forgot password?</button>
+            {/* emails a reset link, or says to ask an Admin where the server cannot send email (QA DEF-30) */}
+            <Link href="/forgot-password" className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Forgot password?</Link>
           </div>
           <Input id="password" name="password" type="password" required autoComplete="current-password" onInput={edited} {...fieldProps} className="h-10" />
         </div>
-        {forgot && (
-          <p role="status" className="rounded-lg border bg-muted px-3 py-2 text-sm text-muted-foreground">
-            Ask an Admin at {org} to reset it under Settings &gt; Users. They will give you a temporary password, and you choose a new one when you sign in. If no Admin can sign in, your IT team can reset it on the server.
-          </p>
+        {passwordReset && !error && (
+          <p role="status" className="rounded-lg border bg-muted px-3 py-2 text-sm text-muted-foreground">Your password was changed. Sign in with the new one.</p>
         )}
         {error && <p id="login-error" role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
         <Button type="submit" size="lg" className="h-10 w-full" disabled={busy}>{busy && <Loader2 className="animate-spin" />}{busy ? "Signing in…" : "Sign in"}</Button>

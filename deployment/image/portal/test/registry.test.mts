@@ -87,16 +87,36 @@ describe("the pieces that must agree with each other", () => {
     assert.match(read("aws/scripts/create-digi.py"), /"toolIds": \[[^\]]*"digi_events"/);
   });
   test("the portal sends the same HSTS and CSP as the Caddyfile (QA DEF-06)", () => {
-    const caddy = read("aws/Caddyfile"), next = read("image/portal/next.config.ts");
+    const caddy = read("aws/caddy/Caddyfile"), next = read("image/portal/next.config.ts");
     const fromCaddy = (k: string) => caddy.match(new RegExp(`${k} "([^"]+)"`))?.[1];
     assert.equal(next.match(/const HSTS = "([^"]+)"/)?.[1], fromCaddy("Strict-Transport-Security"));
     assert.equal(next.match(/const CSP = `([^`]+)`/)?.[1].replace(/\$\{[^}]+\}/, ""), fromCaddy("Content-Security-Policy"));
   });
   test("neither the portal nor Caddy says what the site runs on (QA DEF-08)", () => {
     assert.match(read("image/portal/next.config.ts"), /poweredByHeader: false/);
-    const caddy = read("aws/Caddyfile");
+    const caddy = read("aws/caddy/Caddyfile");
     assert.match(caddy, /^\s*-Via$/m);
     assert.match(caddy, /^\s*-Server$/m);
+  });
+  test("the portal answers /robots.txt and /sitemap.xml in plain text, as Caddy does (QA DEF-09)", () => {
+    const caddy = read("aws/caddy/Caddyfile");
+    assert.match(caddy, /handle \/robots\.txt \{[^}]*respond "User-agent: \*\nDisallow: \/\n" 200/);
+    assert.match(read("image/portal/src/app/robots.txt/route.ts"), /"User-agent: \*\\nDisallow: \/\\n"/);
+    assert.match(read("image/portal/src/app/sitemap.xml/route.ts"), /status: 404/);
+  });
+  test("Caddy refuses a Host that is not this site, over HTTPS and plain HTTP, instead of redirecting to it (QA DEF-46)", () => {
+    const caddy = read("aws/caddy/Caddyfile");
+    assert.match(caddy, /^\s*strict_sni_host on$/m);
+    assert.match(caddy, /^\s*auto_https disable_redirects$/m);
+    const http = caddy.match(/^http:\/\/ \{\n([\s\S]*?)\n\}/m)?.[1] ?? "";
+    assert.match(http, /redir @site https:\/\/\{\$DIGI_DOMAIN\}\{uri\} 308/);
+    assert.match(http, /respond "Misdirected Request" 421/);
+    assert.doesNotMatch(http, /\{(http\.request\.)?host\}/);
+  });
+  test("Caddy's config is mounted as a folder, so a reload after git pull reads the new Caddyfile (QA DEF-08)", () => {
+    const compose = read("aws/docker-compose.yml");
+    assert.match(compose, /- \.\/caddy:\/etc\/caddy:ro/);
+    assert.doesNotMatch(compose, /Caddyfile:\/etc\/caddy\/Caddyfile/);
   });
   test("list_bookings tells Digi who requested each booking, as the Bookings page does (QA DEF-61)", () => {
     assert.match(read("image/portal/src/lib/tools/registry.ts"), /status: s, requestedBy, email \}\)\);/);

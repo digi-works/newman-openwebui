@@ -28,7 +28,13 @@ async function record(tenantId: string, userId: string, runId: string | null, to
 
 export async function callTool(chatId: unknown, toolId: string, args: Args, opts: { embeds?: boolean } = {}): Promise<GatewayResult> {
   const caller = await callerFromChatId(chatId);
-  if (!caller) return { status: 401, body: { error: "I could not tell who is asking. Please sign in again and retry." } };
+  if (!caller) {
+    // Why, for the server log (never the id itself): no chat id usually means Open WebUI did not pass __metadata__, a different form means it
+    // sent its own chat id instead of Digi's handle, and an unknown one that the turn ran longer than the handle lives or reached another portal.
+    const why = typeof chatId !== "string" || !chatId ? "no chat_id" : !chatId.startsWith("local:exec-") ? `chat_id is not a Digi handle (${chatId.slice(0, 6)}…)` : "unknown or expired handle";
+    console.warn(`tool gateway: ${toolId} refused, ${why}`);
+    return { status: 401, body: { error: "I could not tell who is asking. Please sign in again and retry." } };
+  }
   const { actor, ctx } = caller;
   const started = Date.now();
   // When a Worker is handling the turn, its own policy narrows what this person may do (never widens it).

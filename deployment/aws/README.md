@@ -144,7 +144,7 @@ Run from the `deployment/aws` folder. `.env` and the data volumes are never touc
    docker load -i ../image/digiworks-portal.tar.gz
    docker compose up -d
    ```
-   If the update changed the `Caddyfile` (listed under **This update**), reload Caddy too; `up -d` does not notice a changed Caddyfile:
+   If the update changed `caddy/Caddyfile` (listed under **This update**), reload Caddy too; `up -d` does not notice a changed Caddyfile:
    ```bash
    docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
    ```
@@ -157,13 +157,21 @@ Run from the `deployment/aws` folder. `.env` and the data volumes are never touc
 5. Check: sign in, open **Settings > AI connection** (Open WebUI should show as connected), and ask Digi a question in **New chat**.
 
 ### This update: Admins approve their own requests, security headers
-- Portal image: Admins can approve or decline their own room requests; other roles can once an Admin turns on **Approve own requests** for them in Settings > Permissions (migration `0017_approve_own_bookings.sql` runs by itself at start). The portal now sends `Strict-Transport-Security` and `Content-Security-Policy` itself (QA DEF-06) and no longer sends `X-Powered-By: Next.js` (QA DEF-08).
-- `Caddyfile`: drops Caddy's `Via: 1.1 Caddy` header and any `Server` header (QA DEF-08). Reload Caddy (step 2). Servers that never reloaded Caddy after the earlier QA fixes also get its `/robots.txt`, `/sitemap.xml` and JSON API errors from this reload. Check:
+- Portal image: **Forgot password?** on the sign-in page opens `/forgot-password`. Someone enters their email and Digi emails them a link (`/reset-password`) to choose a new password; it works once, for 30 minutes, signs them out everywhere and lifts a lock from too many attempts. The page says the same whether or not the address has an account, and asking is limited to 3 links per address per 15 minutes. It uses the same email settings as room booking emails (`MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MAIL_FROM`); on a server without them the page says to ask an Admin, as before. The link uses `PUBLIC_URL` when set, otherwise `https://DIGI_DOMAIN`. One small database migration (`0018_password_resets.sql`) runs by itself at start (QA DEF-30).
+- Portal image: Admins can approve or decline their own room requests; other roles can once an Admin turns on **Approve own requests** for them in Settings > Permissions (migration `0017_approve_own_bookings.sql` runs by itself at start). The portal now sends `Strict-Transport-Security` and `Content-Security-Policy` itself (QA DEF-06) and no longer sends `X-Powered-By: Next.js` (QA DEF-08). It also answers `/robots.txt` itself in plain text (`User-agent: *` / `Disallow: /`) and `/sitemap.xml` with a plain 404, instead of the 12 KB HTML 404 page, the same answers as the Caddyfile (QA DEF-09).
+- `Caddyfile`: drops Caddy's `Via: 1.1 Caddy` header and any `Server` header (QA DEF-08). It has moved to `caddy/Caddyfile`, and `docker-compose.yml` now mounts the `caddy` folder instead of the single file. With the old file mount, Caddy kept reading the Caddyfile from before `git pull` (git replaces the file, the mount stays on the old one), so a reload changed nothing and none of the earlier Caddyfile fixes (`/robots.txt`, `/sitemap.xml`, JSON API errors, 421, 501) reached the server. Step 2's `docker compose up -d` recreates Caddy with the new mount, so this time no separate reload is needed, and later reloads work. Check:
   ```bash
   curl -sI https://your.domain/login | grep -iE 'strict-transport|content-security|via|powered'
   ```
-  Expected: the first two lines only.
-- Tool modules: `digi_bookings` (`list_bookings` now says who requested each booking, so Digi can answer "who requested BK-…", QA DEF-61). Run step 3 with `--update digi_bookings`.
+  Expected: the first two lines only. Also `curl -s https://your.domain/robots.txt` answers `User-agent: *` / `Disallow: /` in plain text.
+- `Caddyfile`: a request for any other Host is refused with `421 Misdirected Request` on plain HTTP too. Before, port 80 redirected it to `https://<that host>` (QA DEF-46); the site's own address still goes to HTTPS. Over HTTPS, `strict_sni_host` (already in the file) now takes effect with the mount fix above. Check:
+  ```bash
+  curl -si -H 'Host: evil.example.com' https://your.domain/login | head -1   # HTTP/2 421
+  curl -si -H 'Host: evil.example.com' http://your.domain/login | head -1    # HTTP/1.1 421 Misdirected Request
+  curl -si http://your.domain/login | grep -i '^location'                     # https://your.domain/login
+  ```
+- Tool modules: `digi_bookings` 0.5.0 (`list_bookings` says who requested each booking, finds a booking by its reference on any date, and without a date also lists requests still waiting whose day has passed, so Digi no longer says a person's own waiting request does not exist, QA DEF-61). Run step 3 with `--update digi_bookings`. Check in Open WebUI > Workspace > Tools that Digi Bookings shows version 0.5.0.
+- If Digi answers that it "could not tell who is asking" for every tool, the portal log says why: `docker compose logs portal | grep 'tool gateway'`.
 
 ### Earlier update: Digi can answer questions about campus events
 - Portal image: a new read-only tool, `events.search`, looks up the events imported into Digi by date or name (campus time; classes only when asked). Anyone who can use Digi may use it, Faculty and Students included. Faculty booking access is unchanged: they request, view, change and cancel their own bookings, and cannot see other people's or approve. One small database migration (`0016_events_search.sql`) runs by itself at start.

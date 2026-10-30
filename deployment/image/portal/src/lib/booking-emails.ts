@@ -100,7 +100,7 @@ export function verifyDecisionLink(token: string): LinkClaims | null {
   }
 }
 
-const publicUrl = () => (process.env.PUBLIC_URL || `https://${getBrand().host}`).replace(/\/+$/, "");
+export const publicUrl = () => (process.env.PUBLIC_URL || `https://${getBrand().host}`).replace(/\/+$/, "");
 export const decisionUrl = (token: string, decision: "approve" | "decline") => `${publicUrl()}/email-decision?t=${encodeURIComponent(token)}&d=${decision}`;
 
 /** The Digi user who decides from a manager email: active, in this tenant, with the approve permission. Null when there is none. */

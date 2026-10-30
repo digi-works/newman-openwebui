@@ -1,9 +1,23 @@
 {
 	email {$ACME_EMAIL}
+	# Plain HTTP is answered by the http:// site below, not by Caddy's own redirect to whatever Host was asked for (QA DEF-46).
+	auto_https disable_redirects
 	servers {
 		# A request whose Host header is not the site it reached over TLS (Host: evil.example on a connection made to this site) is
 		# refused with 421 Misdirected Request, instead of Caddy's empty 200 for a host it has no site for (QA DEF-46).
 		strict_sni_host on
+	}
+}
+
+# Plain HTTP: this site's address goes to HTTPS, and any other Host is refused with 421. Caddy's own redirect (switched off above) sent
+# every Host to https://<that host>, so Host: evil.example came back as Location: https://evil.example/ (QA DEF-46). Certificate checks
+# on port 80 are answered by Caddy before these routes.
+http:// {
+	header -Server
+	@site host {$DIGI_DOMAIN}
+	redir @site https://{$DIGI_DOMAIN}{uri} 308
+	respond "Misdirected Request" 421 {
+		close
 	}
 }
 

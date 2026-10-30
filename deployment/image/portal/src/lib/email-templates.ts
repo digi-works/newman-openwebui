@@ -130,3 +130,17 @@ export function inviteEmail(e: InviteEvent, startLabel: string, endLabel: string
   });
   return { subject: `Invitation: ${e.title} – ${prettyDate(e.date)}`, html };
 }
+
+/** To someone who asked for a new password on /forgot-password. The link works once, for `minutes`. */
+export function passwordResetEmail(name: string, url: string, minutes: number) {
+  const brand = getBrand();
+  const button = `<a href="${esc(url)}" style="display:inline-block;background:${NAVY};color:#FFFFFF;text-decoration:none;padding:13px 34px;border:1px solid ${NAVY};border-radius:10px;font-size:14px;font-weight:600;">Choose a new password</a>`;
+  const html = shell({
+    title: "Reset your password", kicker: "Account · Password reset", heading: "Choose a new password.",
+    greeting: `Hi ${name},`, intro: `Someone, hopefully you, asked to reset the password of your ${brand.name} account. The button below works once, for the next ${minutes} minutes.`,
+    body: section(`<div style="text-align:center;">${button}</div>`, 28)
+      + paragraph("Did not ask for this?", "Ignore this email. Your password stays as it is, and the link stops working on its own."),
+    signoff: brand.name,
+  });
+  return { subject: `Reset your ${brand.name} password`, html };
+}
