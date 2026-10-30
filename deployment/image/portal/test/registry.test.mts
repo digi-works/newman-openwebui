@@ -98,6 +98,12 @@ describe("the pieces that must agree with each other", () => {
     assert.match(caddy, /^\s*-Via$/m);
     assert.match(caddy, /^\s*-Server$/m);
   });
+  test("the portal answers /robots.txt and /sitemap.xml in plain text, as Caddy does (QA DEF-09)", () => {
+    const caddy = read("aws/caddy/Caddyfile");
+    assert.match(caddy, /handle \/robots\.txt \{[^}]*respond "User-agent: \*\nDisallow: \/\n" 200/);
+    assert.match(read("image/portal/src/app/robots.txt/route.ts"), /"User-agent: \*\\nDisallow: \/\\n"/);
+    assert.match(read("image/portal/src/app/sitemap.xml/route.ts"), /status: 404/);
+  });
   test("Caddy's config is mounted as a folder, so a reload after git pull reads the new Caddyfile (QA DEF-08)", () => {
     const compose = read("aws/docker-compose.yml");
     assert.match(compose, /- \.\/caddy:\/etc\/caddy:ro/);
