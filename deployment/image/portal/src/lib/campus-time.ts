@@ -11,3 +11,6 @@ export function campusTime(iso: string | number | Date, opts: Intl.DateTimeForma
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? String(iso) : d.toLocaleString("en-US", { ...opts, timeZone: CAMPUS_TZ });
 }
+
+/** Today's date on the campus clock, as YYYY-MM-DD. */
+export const campusDate = (at: Date = new Date()) => at.toLocaleDateString("en-CA", { timeZone: CAMPUS_TZ });

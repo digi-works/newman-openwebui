@@ -170,7 +170,8 @@ Run from the `deployment/aws` folder. `.env` and the data volumes are never touc
   curl -si -H 'Host: evil.example.com' http://your.domain/login | head -1    # HTTP/1.1 421 Misdirected Request
   curl -si http://your.domain/login | grep -i '^location'                     # https://your.domain/login
   ```
-- Tool modules: `digi_bookings` (`list_bookings` now says who requested each booking, so Digi can answer "who requested BK-…", QA DEF-61). Run step 3 with `--update digi_bookings`.
+- Tool modules: `digi_bookings` 0.5.0 (`list_bookings` says who requested each booking, finds a booking by its reference on any date, and without a date also lists requests still waiting whose day has passed, so Digi no longer says a person's own waiting request does not exist, QA DEF-61). Run step 3 with `--update digi_bookings`. Check in Open WebUI > Workspace > Tools that Digi Bookings shows version 0.5.0.
+- If Digi answers that it "could not tell who is asking" for every tool, the portal log says why: `docker compose logs portal | grep 'tool gateway'`.
 
 ### Earlier update: Digi can answer questions about campus events
 - Portal image: a new read-only tool, `events.search`, looks up the events imported into Digi by date or name (campus time; classes only when asked). Anyone who can use Digi may use it, Faculty and Students included. Faculty booking access is unchanged: they request, view, change and cancel their own bookings, and cannot see other people's or approve. One small database migration (`0016_events_search.sql`) runs by itself at start.

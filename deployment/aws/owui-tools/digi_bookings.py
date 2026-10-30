@@ -2,7 +2,7 @@
 title: Digi Bookings
 author: Digiworks
 description: A person's bookings, plus requests and cancellations that Digi prepares and the person confirms in Digi.
-version: 0.4.0
+version: 0.5.0
 """
 
 from typing import Optional
@@ -36,25 +36,27 @@ class Tools:
             body = {}
         return r.status_code, body
 
-    def list_bookings(self, date: str = "", status: str = "", __metadata__: Optional[dict] = None) -> str:
+    def list_bookings(self, ref: str = "", date: str = "", status: str = "", __metadata__: Optional[dict] = None) -> str:
         """
         List room bookings. People who may not see every booking get only their own. Use for "what is booked on 2026-10-14",
         "which requests are still waiting", "my bookings" or "who requested BK-WTEVG" (each line names the requester). Read only.
-        :param date: Date as YYYY-MM-DD, or empty for upcoming.
+        When the person names a booking reference (BK-...), pass it as ref: it is found on any date, past ones too.
+        :param ref: Booking reference such as BK-WTEVG, or empty.
+        :param date: Date as YYYY-MM-DD, or empty for upcoming ones plus requests still waiting.
         :param status: One of Waiting, Confirmed, Declined, Cancelled, Expired, or empty for all.
         """
         # The portal's internal word for a waiting request is "Tentative"; people see "Waiting" everywhere, so Digi uses the same word.
         wanted = status.strip().lower()
         status = "Tentative" if wanted in ("waiting", "pending", "tentative") else status
         try:
-            code, body = self._call("bookings.list", {"date": date, "status": status}, __metadata__)
+            code, body = self._call("bookings.list", {"ref": ref.strip(), "date": date, "status": status}, __metadata__)
         except Exception as e:  # noqa: BLE001
             return f"I could not look up bookings just now ({type(e).__name__})."
         if code != 200:
             return body.get("error", "I cannot look up bookings for this account.")
         items = body.get("items", [])
         if not items:
-            return "No bookings matched."
+            return f"No booking {ref.strip()} among the bookings this person may see." if ref.strip() else "No bookings matched."
         return "\n".join(
             f"- {i['ref']}: {i['date']} {i['start']} to {i['end']}: {i['room']} ({i['building']}), {i['purpose']}, {SHOWN.get(i['status'], i['status'])}, "
             f"requested by {i.get('requestedBy') or 'unknown'} ({i.get('email') or 'no email'})"

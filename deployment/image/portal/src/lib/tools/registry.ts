@@ -3,6 +3,7 @@ import {
 } from "../booking-service";
 import { P, type PermissionCode } from "../permissions";
 import { EventSearchError, searchEvents } from "../campus-events";
+import { campusDate } from "../campus-time";
 import { checkInvite, InviteError, sendInvite } from "../event-invites";
 import { MailError } from "../mail";
 import { addMemory } from "../memory";
@@ -42,6 +43,26 @@ export class ToolError extends Error {
   constructor(message: string, readonly status = 400) { super(message); }
 }
 
+/**
+ * Which bookings list_bookings answers with. A reference is looked up on every date, and a list without a date also keeps requests still
+ * waiting for a decision whose day has passed: the Bookings page shows both, so Digi said a person's own visible request did not exist
+ * once its day was over (QA DEF-61). Soonest first, so the 40 Digi sees are the next ones, not the furthest away.
+ */
+export function pickBookings<B extends { ref: string; date: string; start: string; status: string }>(all: B[], q: { ref?: string; date?: string; status?: string; today: string }): B[] {
+  const ref = (q.ref ?? "").trim().toUpperCase(), status = (q.status ?? "").trim().toLowerCase();
+  return all
+    .filter((b) => (ref ? b.ref.toUpperCase() === ref : q.date ? b.date === q.date : b.date >= q.today || b.status === "Tentative"))
+    .filter((b) => !status || b.status.toLowerCase() === status)
+    .sort((x, y) => x.date.localeCompare(y.date) || minutes(x.start) - minutes(y.start));
+}
+// "2:00 PM" -> 840; unreadable times sort last
+const minutes = (t: string) => {
+  const m = /^(\d{1,2}):(\d{2})\s*([AP]M)?$/i.exec(t.trim());
+  if (!m) return 24 * 60;
+  const h = m[3] ? (Number(m[1]) % 12) + (m[3].toUpperCase() === "PM" ? 12 : 0) : Number(m[1]);
+  return h * 60 + Number(m[2]);
+};
+
 const TOOLS: ToolDef[] = [
   {
     id: "rooms.list", description: "List bookable rooms", risk: "read", permission: P.bookingsViewOwn, owuiToolId: "digi_rooms",
@@ -67,10 +88,7 @@ const TOOLS: ToolDef[] = [
     id: "bookings.list", description: "List bookings", risk: "read", permission: P.bookingsViewOwn, owuiToolId: "digi_bookings",
     async run(actor, a) {
       const viewAll = actor.permissions.includes("*") || actor.permissions.includes(P.bookingsViewAll);
-      const date = str(a.date, 10), status = str(a.status, 20).toLowerCase(), today = new Date().toISOString().slice(0, 10);
-      const items = (await listBookings(actor, viewAll))
-        .filter((b) => (date ? b.date === date : b.date >= today))
-        .filter((b) => !status || b.status.toLowerCase() === status)
+      const items = pickBookings(await listBookings(actor, viewAll), { ref: str(a.ref, 20), date: str(a.date, 10), status: str(a.status, 20), today: campusDate() })
         // Who asked for it, as the Bookings page's Requester column shows it (QA DEF-61).
         .map(({ ref, date: d, start, end, room, building, purpose, status: s, requestedBy, email }) => ({ ref, date: d, start, end, room, building, purpose, status: s, requestedBy, email }));
       return { items: items.slice(0, 40) };
