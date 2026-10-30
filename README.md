@@ -23,7 +23,7 @@ The full guide, with every value explained and a troubleshooting table, is [depl
 | `deployment/image/portal/` | The portal's source code, which the image is built from. Only needed to change the portal ([Building the portal image](deployment/aws/README.md#building-the-portal-image)). |
 | `deployment/aws/docker-compose.yml` | Runs the portal, Postgres and Caddy |
 | `deployment/aws/.env.example` | Every setting the server needs; copied to `.env` and filled in |
-| `deployment/aws/Caddyfile` | HTTPS, security headers, and the allow-list for Open WebUI's tool calls |
+| `deployment/aws/caddy/Caddyfile` | HTTPS, security headers, and the allow-list for Open WebUI's tool calls |
 | `deployment/aws/connect-owui.py` | Connects Digi to Open WebUI: runtime accounts, Digi's tools and the **Digi** model |
 | `deployment/aws/owui-tools/` | The Digi tool modules installed in Open WebUI |
 | `deployment/aws/scripts/` | Helpers: Supabase import, password reset, tool and model setup |
@@ -76,7 +76,7 @@ docker compose up -d
 Run from `deployment/aws`. `.env` and the data are never touched, and database changes run by themselves when the portal starts.
 
 1. **Get the new version:** `git pull`
-2. **Load the new image and restart:** `docker load -i ../image/digiworks-portal.tar.gz`, then `docker compose up -d`. If the update changed the `Caddyfile`, also reload Caddy.
+2. **Load the new image and restart:** `docker load -i ../image/digiworks-portal.tar.gz`, then `docker compose up -d`. If the update changed `caddy/Caddyfile`, also reload Caddy.
 3. **Update Digi's tools in Open WebUI**, only the ones the update lists: `python3 connect-owui.py --update <tool names>`. Do not use `--reset` for an update.
 4. **Update Digi's instructions**, if the update lists new lines: paste them in Open WebUI > Workspace > Models > Digi > System prompt.
 5. **Check:** sign in, confirm **Settings > AI connection** shows Open WebUI connected, and ask Digi a question in **New chat**.

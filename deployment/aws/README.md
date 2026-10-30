@@ -144,7 +144,7 @@ Run from the `deployment/aws` folder. `.env` and the data volumes are never touc
    docker load -i ../image/digiworks-portal.tar.gz
    docker compose up -d
    ```
-   If the update changed the `Caddyfile` (listed under **This update**), reload Caddy too; `up -d` does not notice a changed Caddyfile:
+   If the update changed `caddy/Caddyfile` (listed under **This update**), reload Caddy too; `up -d` does not notice a changed Caddyfile:
    ```bash
    docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
    ```
@@ -158,11 +158,11 @@ Run from the `deployment/aws` folder. `.env` and the data volumes are never touc
 
 ### This update: Admins approve their own requests, security headers
 - Portal image: Admins can approve or decline their own room requests; other roles can once an Admin turns on **Approve own requests** for them in Settings > Permissions (migration `0017_approve_own_bookings.sql` runs by itself at start). The portal now sends `Strict-Transport-Security` and `Content-Security-Policy` itself (QA DEF-06) and no longer sends `X-Powered-By: Next.js` (QA DEF-08).
-- `Caddyfile`: drops Caddy's `Via: 1.1 Caddy` header and any `Server` header (QA DEF-08). Reload Caddy (step 2). Servers that never reloaded Caddy after the earlier QA fixes also get its `/robots.txt`, `/sitemap.xml` and JSON API errors from this reload. Check:
+- `Caddyfile`: drops Caddy's `Via: 1.1 Caddy` header and any `Server` header (QA DEF-08). It has moved to `caddy/Caddyfile`, and `docker-compose.yml` now mounts the `caddy` folder instead of the single file. With the old file mount, Caddy kept reading the Caddyfile from before `git pull` (git replaces the file, the mount stays on the old one), so a reload changed nothing and none of the earlier Caddyfile fixes (`/robots.txt`, `/sitemap.xml`, JSON API errors, 421, 501) reached the server. Step 2's `docker compose up -d` recreates Caddy with the new mount, so this time no separate reload is needed, and later reloads work. Check:
   ```bash
   curl -sI https://your.domain/login | grep -iE 'strict-transport|content-security|via|powered'
   ```
-  Expected: the first two lines only.
+  Expected: the first two lines only. Also `curl -s https://your.domain/robots.txt` answers `User-agent: *` / `Disallow: /` in plain text.
 - Tool modules: `digi_bookings` (`list_bookings` now says who requested each booking, so Digi can answer "who requested BK-…", QA DEF-61). Run step 3 with `--update digi_bookings`.
 
 ### Earlier update: Digi can answer questions about campus events

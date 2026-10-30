@@ -10,7 +10,8 @@ services:
       OWUI_ALLOWED_IP: "${OWUI_ALLOWED_IP:?set in .env}"
       ACME_EMAIL: "${ACME_EMAIL:?set in .env}"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # The folder, not the file: git pull replaces Caddyfile with a new file, and a file mount keeps showing Caddy the old one (QA DEF-08).
+      - ./caddy:/etc/caddy:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on: [portal]
