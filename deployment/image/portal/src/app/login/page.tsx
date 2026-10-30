@@ -16,7 +16,7 @@ const AREAS = [
   { label: "Alumni relations", icon: HeartHandshake },
 ];
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   if (await getSessionUser()) redirect("/");
   const brand = getBrand();
   // Drop a photo at public/login-bg.jpg and it becomes the background; without it the navy art shows.
@@ -57,7 +57,7 @@ export default async function LoginPage() {
         <section className="flex justify-center lg:px-10">
           <div className="force-light w-full max-w-md rounded-2xl bg-card p-8 text-card-foreground shadow-2xl ring-1 ring-black/5 sm:p-10">
             <Image src="/newman-logo.png" alt={brand.org} width={221} height={152} className="mx-auto mb-6 h-auto w-40" priority />
-            <LoginForm org={brand.org} />
+            <LoginForm org={brand.org} passwordReset={(await searchParams).reset === "1"} />
           </div>
         </section>
       </div>
