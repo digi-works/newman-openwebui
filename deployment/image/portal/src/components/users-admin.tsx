@@ -55,7 +55,7 @@ export function UsersAdmin({ users, roles, selfId, can }: { users: AdminUserRow[
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
+          <h1 className="text-[32px] leading-tight">Users</h1>
           <p className="text-sm text-muted-foreground">People who can sign in to Digi. There is no self sign-up; you create each account and hand over a temporary password.</p>
         </div>
         {can.create && <Button onClick={() => { setAdding((v) => !v); setError(""); }}><UserPlus /> Add user</Button>}

@@ -37,7 +37,7 @@ export function UpdatesAdmin({ initial }: { initial: UpdatesView | null }) {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">AI updates</h1>
+        <h1 className="text-[32px] leading-tight">AI updates</h1>
         <p className="text-sm text-muted-foreground">New AI capabilities arrive from the platform as signed releases. Digi checks each one before it can run, and you decide when to install it.</p>
       </div>
       {msg && <p role="status" className={msg.ok ? "text-sm text-emerald-700 dark:text-emerald-300" : "text-sm text-destructive"}>{msg.text}</p>}

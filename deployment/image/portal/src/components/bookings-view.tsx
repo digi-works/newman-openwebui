@@ -68,7 +68,7 @@ export function BookingsView({ bookings, today, canDecide, canDecideOwn, canEdit
       <div className="min-w-0 flex-1 space-y-6">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-semibold tracking-tight text-primary md:text-5xl">{current.title}</h1>
+            <h1 className="text-[38px] text-foreground">{current.title}</h1>
             <p className="mt-1 text-muted-foreground">{canDecide && !ownOnly && current.value === "awaiting" ? "Requests waiting for a decision. Open one to approve or decline it." : current.blurb}</p>
           </div>
           <div className="flex gap-2">

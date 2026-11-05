@@ -13,7 +13,7 @@ export default async function AccountPage() {
     <div className="p-4 md:p-8">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Account</h1>
+          <h1 className="text-[32px] leading-tight">Account</h1>
           <p className="text-sm text-muted-foreground">Your sign-in details at {brand.org}.</p>
         </div>
         <dl className="grid grid-cols-[7rem_1fr] gap-y-2 rounded-xl border bg-card p-4 text-sm">

@@ -37,7 +37,7 @@ export function WorkersGallery({ agents }: { agents: Agent[] }) {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
       <div>
-        <h1 className="text-4xl font-semibold tracking-tight text-primary md:text-5xl">Workers</h1>
+        <h1 className="text-[38px] text-foreground">Workers</h1>
         <p className="mt-1 text-muted-foreground">Specialists you can talk to directly. Pick one to start a conversation.</p>
       </div>
 

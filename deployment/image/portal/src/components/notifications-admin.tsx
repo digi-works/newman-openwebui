@@ -42,7 +42,7 @@ export function NotificationsAdmin({ initial, mail, log }: { initial: Notificati
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Notifications</h1>
+        <h1 className="text-[32px] leading-tight">Notifications</h1>
         <p className="text-sm text-muted-foreground">Emails Digi sends about room bookings. Calendar invites Digi sends from chat need no switch: the person confirms each one there. The notification bell in Digi works either way.</p>
       </div>
 

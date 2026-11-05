@@ -36,7 +36,7 @@ export function AiConnectionAdmin({ initial, secretsReady, memoryOn }: { initial
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">AI connection</h1>
+        <h1 className="text-[32px] leading-tight">AI connection</h1>
         <p className="text-sm text-muted-foreground">Your organisation provides its own AI provider key. Digi stores it encrypted, never shows it again, and checks it for you.</p>
       </div>
 

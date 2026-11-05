@@ -1,9 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Brain, CalendarDays, ChevronsUpDown, CircleHelp, Download, History, House, KeyRound, LogOut, Mail, MessageSquare, Plus, Settings, ShieldCheck, Sparkles, UserRound, Users, UsersRound } from "lucide-react";
+import { Brain, CalendarDays, ChevronsUpDown, CircleHelp, Download, History, House, KeyRound, LogOut, Mail, Plus, Settings, ShieldCheck, Sparkles, UserRound, Users, UsersRound } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarRail,
@@ -15,7 +14,7 @@ import type { Brand } from "@/lib/brand";
 import { hasPermission, P } from "@/lib/permissions";
 import type { SessionUser } from "@/lib/session";
 
-export function AppSidebar({ brand, user }: { brand: Brand; user: SessionUser }) {
+export function AppSidebar({ user }: { brand: Brand; user: SessionUser }) {
   const pathname = usePathname();
   const router = useRouter();
   const { chats } = useStore();
@@ -25,23 +24,20 @@ export function AppSidebar({ brand, user }: { brand: Brand; user: SessionUser })
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<Link href="/" />}>
-              <Image src="/digiworks-mark.png" alt="" width={32} height={32} className="size-8 shrink-0" />
-              <div className="grid flex-1 text-left leading-tight">
-                <span className="truncate font-semibold">{brand.name}</span>
-                <span className="truncate text-xs text-muted-foreground">{brand.org}</span>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarHeader className="px-3.5 pt-[18px]">
+        <button
+          type="button"
+          onClick={async () => router.push(`/chat/${await createChat("digi")}`)}
+          className="flex w-full items-center gap-2.5 rounded-[10px] border bg-card px-3.5 py-[11px] text-[13.5px] font-medium shadow-[0_1px_1px_rgba(0,0,0,0.03)] transition-colors hover:bg-background group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+        >
+          <Plus className="size-4 shrink-0 text-brand" />
+          <span className="group-data-[collapsible=icon]:hidden">New conversation</span>
+        </button>
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Platform</SidebarGroupLabel>
+        <SidebarGroup className="lg:hidden">
+          <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Home" isActive={pathname === "/"} render={<Link href="/" />}>
@@ -76,17 +72,13 @@ export function AppSidebar({ brand, user }: { brand: Brand; user: SessionUser })
         </SidebarGroup>
 
         <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-          <SidebarGroupLabel>Recent chats</SidebarGroupLabel>
+          <SidebarGroupLabel>Recent</SidebarGroupLabel>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton onClick={async () => router.push(`/chat/${await createChat("digi")}`)}>
-                <Plus /> <span>New chat</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {recent.length === 0 && <p className="px-2 py-1.5 text-[13px] text-muted-foreground">No conversations yet.</p>}
             {recent.map((c) => (
               <SidebarMenuItem key={c.id}>
                 <SidebarMenuButton isActive={pathname === `/chat/${c.id}`} render={<Link href={`/chat/${c.id}`} />}>
-                  <MessageSquare /> <span className="truncate">{c.title}</span>
+                  <span className="truncate">{c.title}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}

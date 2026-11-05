@@ -33,7 +33,7 @@ export function MemoryView({ initialItems, enabled }: { initialItems: Memory[]; 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Memory</h1>
+        <h1 className="text-[32px] leading-tight">Memory</h1>
         <p className="text-sm text-muted-foreground">Notes Digi keeps for you, only because you asked. Say “remember that…” in a chat, or add one here. Delete any note at any time.</p>
       </div>
       {!enabled && <p role="status" className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">Your organisation has switched memory off. Existing notes are not used, and new ones cannot be added.</p>}

@@ -29,7 +29,7 @@ export function TopbarTicker({ facts }: { facts: Fact[] }) {
       title="Click for another"
       className="group flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/40"
     >
-      <Lightbulb className="size-4 shrink-0 text-[oklch(0.5_0.17_22)]" />
+      <Lightbulb className="size-4 shrink-0 text-brand" />
       <span className="hidden shrink-0 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:inline">Did you know?</span>
       <span key={fact.id} className="min-w-0 truncate text-sm text-foreground/80 animate-in fade-in duration-500 motion-reduce:animate-none">{fact.text}</span>
     </button>

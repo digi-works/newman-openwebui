@@ -83,7 +83,7 @@ export function PermissionsAdmin({ roles, catalog }: { roles: RoleRow[]; catalog
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Permissions</h1>
+        <h1 className="text-[32px] leading-tight">Permissions</h1>
         <p className="text-sm text-muted-foreground">Choose what each role can do, module by module. Then give people a role on the Users page. A person gets everything their role allows.</p>
       </div>
 
