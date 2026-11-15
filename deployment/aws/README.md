@@ -55,6 +55,7 @@ Wait about a minute, then open `https://DIGI_DOMAIN` and sign in with `ADMIN_EMA
    python3 connect-owui.py
    ```
    It checks the token and the model, creates 3 shared runtime accounts (written into `.env` as `OWUI_RUNTIME_POOL`, with the first one also as `OWUI_RUNTIME_EMAIL`/`OWUI_RUNTIME_PASSWORD`), installs the six Digi tool modules in Open WebUI pointing at `https://DIGI_DOMAIN`, and creates the **Digi** model.
+   To test only the address, the API key and the model first, without changing anything, run `python3 connect-owui.py --check`.
    Safe to re-run: Digi, its tools and their settings are left as they are in Open WebUI, so changes made there are kept (only the tools' portal address and key are corrected). To overwrite them with the versions in this repo, run `python3 connect-owui.py --reset`. For a normal update you do not need this step at all.
 4. Apply it and reload Caddy's allow-list:
    ```bash
@@ -66,7 +67,9 @@ Wait about a minute, then open `https://DIGI_DOMAIN` and sign in with `ADMIN_EMA
 If something fails:
 | Symptom | Cause / fix |
 |---|---|
-| `connect-owui.py`: "token rejected" | Use an admin's API key; check `OWUI_URL` has no `/api` suffix |
+| `connect-owui.py`: "API key not recognised (401)" | Copy the whole `sk-...` key into `OWUI_ADMIN_TOKEN`; check `OWUI_URL` has no `/api` suffix |
+| `connect-owui.py`: "not an admin (403)" or "refused the API key (403)" | Create the key while signed in as an admin; in Open WebUI turn on Admin Panel > Settings > General > Enable API Keys |
+| `connect-owui.py`: "admin token rejected (403)" with a valid key | The server has the copy from before the Open WebUI 0.13 fix: `git pull`, then run it again |
 | "model ... is not in that Open WebUI" | Set `OWUI_BASE_MODEL` to an id it prints |
 | Chat answers but never calls tools | Open WebUI cannot reach `https://DIGI_DOMAIN/api/internal/...`: check DNS/firewall and that `OWUI_ALLOWED_IP` is the IP Open WebUI calls *from* (`docker compose logs caddy` shows 403s) |
 | "AI connection" unhealthy | Server cannot reach `OWUI_URL`, or an account was deleted: re-run `connect-owui.py` |

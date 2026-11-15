@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Connects this Digi deployment to a separate Open WebUI instance. Run from this folder, on any machine that can reach OWUI_URL:  python3 connect-owui.py [--reset]
+"""Connects this Digi deployment to a separate Open WebUI instance. Run from this folder, on any machine that can reach OWUI_URL:  python3 connect-owui.py [--reset] [--check]
 
 What it does (safe to re-run):
   1. checks OWUI_URL answers and OWUI_ADMIN_TOKEN is an admin
@@ -8,7 +8,7 @@ What it does (safe to re-run):
   4. installs the five Digi tool modules in Open WebUI, pointing back at https://DIGI_DOMAIN with PORTAL_INTERNAL_KEY
 Anything that already exists in Open WebUI is left as it is there, so changes made in Open WebUI survive a re-run; only the tools' portal
 address and key are corrected. --update digi_rooms (comma separated) replaces just those tool modules' code with this repo's version,
-keeping everything else. --reset overwrites Digi and its tools with the versions in this repo.
+keeping everything else. --reset overwrites Digi and its tools with the versions in this repo. --check runs step 1 only and changes nothing.
 Then restart the portal:  docker compose up -d portal
 No secret is printed.
 """
@@ -17,6 +17,7 @@ sys.stdout.reconfigure(line_buffering=True)  # keep our lines in order with the 
 
 here = pathlib.Path(__file__).resolve().parent
 RESET = "--reset" in sys.argv
+CHECK = "--check" in sys.argv  # run step 1 only: test the URL, the API key and the base model without changing anything
 env_path = here / ".env"
 lines = env_path.read_text(encoding="utf8").split("\n")
 env = {}
@@ -36,13 +37,28 @@ def call(method, path, body=None):
     except Exception as e: sys.exit(f"cannot reach {base}: {e}")
 
 print("1. checking Open WebUI ...")
-s, me = call("GET", "/api/v1/auths/")
-if s != 200 or not isinstance(me, dict): sys.exit(f"admin token rejected ({s}). Create an API key in Open WebUI > Settings > Account.")
-if me.get("role") != "admin": sys.exit("that token belongs to a non-admin user; use an admin's API key")
-s, ver = call("GET", "/api/version"); print("   ok, signed in as", me.get("email"), "| version", ver.get("version") if isinstance(ver, dict) else "?")
+print("   url:", base)
+# Open WebUI 0.13 made GET /api/v1/auths/ a human-session-only route: it answers every API key with 403 "A human session is
+# required.", even a valid admin key. So check the key on an admin route that still accepts API keys. 401 = the key is not
+# recognised; 403 = the key is valid but the account is not an admin, or API keys are switched off.
+s, users = call("GET", "/api/v1/users/all")
+if s == 401: sys.exit("API key not recognised (401). In Open WebUI > Settings > Account > API Keys, copy the whole sk-... value into OWUI_ADMIN_TOKEN: one line, no quotes.")
+if s == 403:
+    s2, body = call("GET", "/api/models")
+    if s2 == 200: sys.exit("that API key works, but its account is not an admin (403). Create the key while signed in as an admin.")
+    sys.exit(f"Open WebUI refused the API key (403: {body}). Check Admin Panel > Settings > General > Enable API Keys, any API key endpoint restrictions, and that the account may use API keys.")
+if s != 200: sys.exit(f"unexpected answer from Open WebUI ({s}): {users}")
+items = users.get("users") if isinstance(users, dict) else users  # 0.13 wraps the list; older versions return it bare
+admins = sorted({u.get("email") or "" for u in items if isinstance(u, dict) and u.get("role") == "admin"} - {""}) if isinstance(items, list) else []
+s, ver = call("GET", "/api/version")
+print("   ok, admin API key accepted | version", ver.get("version") if isinstance(ver, dict) else "?", "| admins:", ", ".join(admins) or "?")
 s, models = call("GET", "/api/models")
 ids = {m["id"] for m in models.get("data", [])} if s == 200 and isinstance(models, dict) else set()
-if env["OWUI_BASE_MODEL"] not in ids: sys.exit(f"model '{env['OWUI_BASE_MODEL']}' is not in that Open WebUI. Models there: {sorted(ids)[:15]}. Add a connection/model first, or fix OWUI_BASE_MODEL.")
+if env["OWUI_BASE_MODEL"] not in ids:
+    msg = f"model '{env['OWUI_BASE_MODEL']}' is not in that Open WebUI. Models there: {sorted(ids)[:15]}. Add a connection/model first, or fix OWUI_BASE_MODEL."
+    if CHECK: print("   WARNING:", msg)
+    else: sys.exit(msg)
+if CHECK: print("   --check: stopping after step 1, nothing was changed."); sys.exit(0)
 
 print("2. runtime accounts ...")
 pool = json.loads(env["OWUI_RUNTIME_POOL"]) if env.get("OWUI_RUNTIME_POOL") else []
