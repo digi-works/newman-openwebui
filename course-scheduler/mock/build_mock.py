@@ -266,7 +266,7 @@ def write(cur, data, rebuild):
     cur.executemany(f"insert into {cs}rooms (room_id, building_id, capacity, room_type) values (%s, %s, %s, %s)", data["rooms"])
     cur.executemany(f"insert into {cs}faculty (faculty_id, name, department_id, employment, max_credit_load) values (%s, %s, %s, %s, %s)", data["faculty"])
     cur.executemany(f"insert into {cs}faculty_qualifications (faculty_id, subject, course_id) values (%s, %s, %s)", data["quals"])
-    cur.executemany(f"insert into {cs}faculty_availability (faculty_id, days, start_time, end_time, kind) values (%s, %s, %s, %s, %s)", data["avail"])
+    cur.executemany(f"insert into {cs}faculty_availability (faculty_id, days, start_time, end_time, kind, source) values (%s, %s, %s, %s, %s, 'mock')", data["avail"])
     cols = ["section_id", "course_id", "section_code", "seat_cap", "credits", "delivery_mode", "slot_kind", "required_room_type", "fixed_faculty_id"]
     cur.executemany(f"insert into {cs}sections (term_id, {', '.join(cols)}) values (%s, {', '.join(['%s'] * len(cols))})",
                     [(TERM, *[s[c] for c in cols]) for s in data["sections"]])

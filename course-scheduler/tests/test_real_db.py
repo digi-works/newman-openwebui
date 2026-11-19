@@ -53,6 +53,7 @@ def test_guesses_are_labelled(db):
     assert one(cur, f"select count(*) from {CS}faculty where not estimated @> '{{employment,max_credit_load}}'") == 0
     assert one(cur, f"select count(*) from {CS}sections where term_id = %s and not estimated @> '{{seat_cap}}'", term) == 0
     assert one(cur, f"select count(*) from {CS}student_groups where source <> 'mock_level'") == 0
+    assert one(cur, f"select count(*) from {CS}faculty_availability where source <> 'mock'") == 0
 
 
 def test_checker_runs_on_the_real_timetable(db):
@@ -61,4 +62,6 @@ def test_checker_runs_on_the_real_timetable(db):
     term = model.load_term(cur, term_id)
     found = {v.rule_code for v in check(term, rows)}
     # The guesses are made so the real timetable fits them: rooms hold their largest section, loads cover what people teach.
-    assert not found & {"ROOM_TOO_SMALL", "ROOM_TYPE_MISMATCH", "FACULTY_OVERLOADED", "FACULTY_NOT_QUALIFIED", "UNKNOWN_SLOT", "UNKNOWN_ROOM"}
+    # Mock availability is fitted around what people really teach, so the real timetable never breaks it.
+    assert not found & {"ROOM_TOO_SMALL", "ROOM_TYPE_MISMATCH", "FACULTY_OVERLOADED", "FACULTY_NOT_QUALIFIED", "UNKNOWN_SLOT", "UNKNOWN_ROOM",
+                        "FACULTY_UNAVAILABLE", "PREFERENCE_MISSED"}

@@ -135,7 +135,7 @@ The file holds instructor names and enrollment, so it stays out of git; pass its
 
 | From the file (real) | Estimated from the file (named in `estimated`) | Still not real |
 |---|---|---|
-| Sections, meeting days and times, rooms, instructors, enrollment, online or in person, part of term and dates | Seat caps, room capacity and type, instructor employment and maximum load, which lecture a lab belongs to | Student groups (guessed from program requirements), instructor availability (none) |
+| Sections, meeting days and times, rooms, instructors, enrollment, online or in person, part of term and dates | Seat caps, room capacity and type, instructor employment and maximum load, which lecture a lab belongs to | Student groups (guessed from program requirements); instructor availability (mock, `source = 'mock'`, fitted so it never blocks a class the person really teaches) |
 
 `source_sections` keeps the file row for row. The timetable as run is schedule run 1 (`solver_version = 'actual-timetable'`).
 Sections in different parts of the term (first and second 8 weeks) never clash. Partner colleges and hospitals are whole sites, not single rooms,

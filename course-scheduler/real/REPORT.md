@@ -12,7 +12,7 @@ Loaded by `real/load_real.py` from `2026FA_courses_Mel_8-5-2026.xlsx` (sha256 `e
 | `rooms` | 60 | Real; `capacity` (largest section held) and `room_type` (what is taught in it) estimated |
 | `faculty` | 159 | Real names; `employment` (9+ credits = full time) and `max_credit_load` estimated |
 | `faculty_qualifications` | 425 | Real: each instructor is qualified for what they teach this term |
-| `faculty_availability` | 0 | Not in the file |
+| `faculty_availability` | 54 | **Mock** (source 'mock'): never blocks a class the person really teaches |
 | `corequisite_pairs` | 140 | From the catalog |
 | `student_groups` | 74 | Still guessed from program requirements (no student data) |
 | `student_group_courses` | 300 | Same |

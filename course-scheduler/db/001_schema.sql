@@ -63,7 +63,8 @@ create table faculty_availability (
   days       text not null check (days ~ '^[MTWRFSU]+$'),
   start_time time not null,
   end_time   time not null check (end_time > start_time),
-  kind       text not null check (kind in ('unavailable', 'preferred'))
+  kind       text not null check (kind in ('unavailable', 'preferred')),
+  source     text not null check (source in ('given', 'mock'))   -- mock = invented until the university sends real availability
 );
 
 -- ---------- What gets scheduled ----------

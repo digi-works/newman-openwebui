@@ -4,6 +4,7 @@ What the file gives is stored as given: sections, meeting days and times, rooms,
 What it doesn't give is estimated from it, and every estimated column is named in that row's `estimated` column:
 seat caps, room capacity and type, instructor employment and maximum load, which lecture a lab belongs to.
 Student groups are still built from the catalog's program requirements (source 'mock_level'): the file has no student data.
+Instructor availability is mock (source 'mock'), made up around what each person really teaches, so it never blocks a class they teach.
 The timetable as the university ran it is saved as one schedule run (solver_version 'actual-timetable'), so the checker can score it.
 
     .venv/bin/python real/load_real.py ~/Downloads/2026FA_courses_Mel_8-5-2026.xlsx --dry-run   # parse and write real/REPORT.md only
@@ -66,6 +67,27 @@ def slug(last, first):
 
 
 def round5(n): return max(5, int(math.ceil(n / 5.0) * 5))
+
+
+def mock_availability(faculty, by_teacher):
+    """Invented availability for real instructors, in the same proportions as the step 1 mock, but fitted to their real Fall 2026 classes:
+    a day off or a morning off is only given when they teach nothing then, and a preference covers the days and hours they really teach."""
+    rng = random.Random(2026)
+    taught = {fid: [s["slot"] for s in ss if s["slot"]] for (fid, _), ss in by_teacher.items()}
+    def free(fid, days, st, en): return not any(set(days) & set(sl[1]) and st < sl[3] and sl[2] < en for sl in taught[fid])
+    out = []
+    for fid, _, _, emp, *_ in faculty:
+        r = rng.random()
+        if r < 0.12:
+            days_off = [d for d in "MTWRF" if free(fid, d, time(7), time(22))]
+            if days_off: out.append((fid, rng.choice(days_off), time(7), time(22), "unavailable"))
+        elif emp == "adjunct" and r < 0.40 and free(fid, "MTWRF", time(7), time(12)):
+            out.append((fid, "MTWRF", time(7), time(12), "unavailable"))
+        if rng.random() < 0.25 and taught[fid]:
+            days = "".join(d for d in "MTWRFSU" if any(d in sl[1] for sl in taught[fid]))
+            st, en = min(sl[2] for sl in taught[fid]), max(sl[3] for sl in taught[fid])
+            out.append((fid, days, time(st.hour), time(min(23, en.hour + (en.minute > 0))), "preferred"))
+    return out
 
 
 def read_file(path):
@@ -173,6 +195,7 @@ def build(cur, path):
         quals |= {(fid, s["subject"], s["course_id"]) for s in ss}
     clash_ids = Counter(fid for fid, _ in by_teacher)
     assert max(clash_ids.values()) == 1, "two instructors share an id"
+    avail = mock_availability(faculty, by_teacher)
     unknown_subjects = sorted({s["subject"] for s in secs if s["subject"] not in dept_of_subject})
     if unknown_subjects: notes.append(f"**Subjects with no department in the catalog:** {', '.join(unknown_subjects)}.")
 
@@ -218,7 +241,7 @@ def build(cur, path):
               f"**Meets at a set time but no room named:** " + ", ".join(f"`{s['section_id']}`" for s in secs if s["delivery_mode"] == "IN_PERSON" and not s["room_id"]) + ".",
               f"**Lecture and lab pairs:** {linked} lab sections linked to a lecture section of their corequisite course (same section letter when there is one)."]
     data = dict(term=term, file=pathlib.Path(path).name, digest=hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest(),
-                slots=slots, buildings=sorted(buildings.items()), rooms=rooms, faculty=faculty, quals=sorted(quals), sections=secs,
+                slots=slots, buildings=sorted(buildings.items()), rooms=rooms, faculty=faculty, quals=sorted(quals), avail=avail, sections=secs,
                 pairs=sorted(pairs), groups=groups, gcourses=gcourses, actual=actual, source=source)
     return data, notes
 
@@ -234,7 +257,7 @@ def report(data, notes):
          f"| `rooms` | {len(data['rooms'])} | Real; `capacity` (largest section held) and `room_type` (what is taught in it) estimated |",
          f"| `faculty` | {len(data['faculty'])} | Real names; `employment` (9+ credits = full time) and `max_credit_load` estimated |",
          f"| `faculty_qualifications` | {len(data['quals'])} | Real: each instructor is qualified for what they teach this term |",
-         "| `faculty_availability` | 0 | Not in the file |",
+         f"| `faculty_availability` | {len(data['avail'])} | **Mock** (source 'mock'): never blocks a class the person really teaches |",
          f"| `corequisite_pairs` | {len(data['pairs'])} | From the catalog |",
          f"| `student_groups` | {len(data['groups'])} | Still guessed from program requirements (no student data) |",
          f"| `student_group_courses` | {len(data['gcourses'])} | Same |",
@@ -263,6 +286,7 @@ def write(cur, data, rebuild):
     cur.executemany(f"insert into {cs}rooms (room_id, building_id, capacity, room_type, estimated) values (%s, %s, %s, %s, %s)", data["rooms"])
     cur.executemany(f"insert into {cs}faculty (faculty_id, name, department_id, employment, max_credit_load, campus, estimated) values (%s, %s, %s, %s, %s, %s, %s)", data["faculty"])
     cur.executemany(f"insert into {cs}faculty_qualifications (faculty_id, subject, course_id) values (%s, %s, %s)", data["quals"])
+    cur.executemany(f"insert into {cs}faculty_availability (faculty_id, days, start_time, end_time, kind, source) values (%s, %s, %s, %s, %s, 'mock')", data["avail"])
     cols = ["section_id", "course_id", "section_code", "seat_cap", "credits", "delivery_mode", "campus", "slot_kind", "required_room_type",
             "subterm", "first_date", "last_date", "enrolled", "estimated"]
     cur.executemany(f"insert into {cs}sections (term_id, {', '.join(cols)}, fixed_faculty_id) values (%s, {', '.join(['%s'] * (len(cols) + 1))})",
