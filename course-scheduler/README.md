@@ -11,10 +11,10 @@ Plan: `ND-Course Scheduling Agent Design and Approach` and the one-page `ND-Cour
 |---|---|---|
 | 0 | Agree the basics: decisions, data tables, open questions | Done (decisions below still need the manager's yes) |
 | 1 | Build the mock data in Neon | **Done**: `mock/build_mock.py`, results in [`mock/REPORT.md`](mock/REPORT.md) |
-| 2 | Checker: lists every broken rule in any timetable | Next |
-| 3 | Solver: OR-Tools CP-SAT | |
+| 2 | Checker: lists every broken rule in any timetable | **Done**: `scheduler/checker.py`, 27 rules, tests in `tests/` |
+| 3 | Solver: OR-Tools CP-SAT | Next |
 | 4 | Service (API) around the engine | |
-| 5 | Real data | |
+| 5 | Real data | **Started**: Fall 2026 sections from the university loaded by `real/load_real.py`, results in [`real/REPORT.md`](real/REPORT.md) |
 | 6 | Digi tool (`digi_scheduler`) | |
 | 7 | Scheduling screen (Calendar Hero 2.0) | |
 
@@ -36,7 +36,9 @@ Each one is our working default until the manager says otherwise.
 
 ## The data tables
 
-Defined in [`db/001_schema.sql`](db/001_schema.sql) and created in Neon by `mock/build_mock.py`.
+Defined in [`db/001_schema.sql`](db/001_schema.sql). Neon now holds the **real Fall 2026 data** (`real/load_real.py`); the mock data can still be
+built in memory (`mock/build_mock.py --dry-run`, `scheduler.model.mock_term`). `rooms`, `faculty` and `sections` have an `estimated` column naming
+every value that was guessed rather than given.
 
 | Table | Holds | Filled from |
 |---|---|---|
@@ -75,7 +77,7 @@ not in the evening.
 
 ```bash
 cd course-scheduler
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt   # requirements.txt + pytest
 cp .env.example .env        # fill in DATABASE_URL, in quotes; .env is git-ignored, never commit the Neon password
 ```
 
@@ -90,3 +92,58 @@ cp .env.example .env        # fill in DATABASE_URL, in quotes; .env is git-ignor
 It reads the scraped catalog (`course_planning`) and never changes it. Every random choice uses one seed, so a rebuild gives
 identical data. [`mock/REPORT.md`](mock/REPORT.md) lists the counts, the tricky cases, rooms and faculty against demand, and the
 rules used to decide how each section meets.
+
+## Step 2: checker
+
+Takes any timetable (a solver run, a planner's edits, or a hand-made file) and lists every broken rule with a plain reason.
+Hard rules must never be broken; soft rules are preferences. The full list, with what each means, is `RULES` in
+[`scheduler/checker.py`](scheduler/checker.py).
+
+```bash
+.venv/bin/python -m scheduler.check --run 3                                  # a saved solver run
+.venv/bin/python -m scheduler.check --csv my.csv --term 2027SP               # a file: section_id, slot_id, room_id, faculty_id
+.venv/bin/python -m scheduler.check --csv edit.csv --term 2027SP --partial   # only the sections in the file (a planner's edit)
+# add --save to store the findings in course_scheduling.rule_violations, --all to print every finding
+```
+
+Exit code 0 means no hard rule is broken, 1 means at least one is.
+
+How the student rule works: for each student group, the checker looks for one section of every course that fits in a clash-free
+week. If every section of one course overlaps every section of another, it reports `GROUP_OVERLAP` for that pair; if each pair is
+fine but no full combination exists, it reports `GROUP_NO_COMBINATION`.
+
+**Proof it works:**
+- `tests/test_checker.py` (no database): a clean timetable gives no findings, and breaking each rule on its own gives exactly that rule.
+- `.venv/bin/python -m scheduler.demo` writes [`mock/bad_timetable.csv`](mock/bad_timetable.csv): 21 sections from the mock data with
+  15 rules broken on purpose (the `broken_on_purpose` column). `tests/test_bad_timetable_db.py` checks every one is caught; it is
+  skipped when there is no `DATABASE_URL`.
+
+```bash
+.venv/bin/python -m pytest -q tests
+```
+
+## Real data: Fall 2026
+
+The university sent its Fall 2026 section list (`2026FA_courses_Mel_8-5-2026.xlsx`, one row per section). It replaces the mock data in Neon.
+The file holds instructor names and enrollment, so it stays out of git; pass its path to the loader.
+
+```bash
+.venv/bin/python real/load_real.py ~/Downloads/2026FA_courses_Mel_8-5-2026.xlsx --dry-run   # parse it and write real/REPORT.md only
+.venv/bin/python real/load_real.py ~/Downloads/2026FA_courses_Mel_8-5-2026.xlsx --rebuild   # drop course_scheduling and load it
+.venv/bin/python -m scheduler.check --run 1                                                # score the timetable as the university ran it
+```
+
+| From the file (real) | Estimated from the file (named in `estimated`) | Still not real |
+|---|---|---|
+| Sections, meeting days and times, rooms, instructors, enrollment, online or in person, part of term and dates | Seat caps, room capacity and type, instructor employment and maximum load, which lecture a lab belongs to | Student groups (guessed from program requirements), instructor availability (none) |
+
+`source_sections` keeps the file row for row. The timetable as run is schedule run 1 (`solver_version = 'actual-timetable'`).
+Sections in different parts of the term (first and second 8 weeks) never clash. Partner colleges and hospitals are whole sites, not single rooms,
+so they are never double-booked.
+
+**What the checker says about the real timetable** (run 1): most findings are practices our rules don't model yet, not mistakes.
+- One instructor teaching several sections at the same time and place (stacked courses, or one class shared across sites): about 100 of
+  the 128 instructor clashes and 35 of the 36 room clashes.
+- Instructors of record for hospital clinicals (RADT, NSG) overlapping their own classes: most of the rest.
+- 37 sections with no instructor ("Staff TBD"), 5 that meet at a set time with no room named.
+- One true room clash: `MUS 4083 A` and `THEO 1033 B`, both Tue/Thu 9:25 in `DEMAT D275`.

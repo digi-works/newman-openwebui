@@ -12,7 +12,7 @@ set search_path = course_scheduling;
 -- One row per meeting time. days uses M T W R F S (R = Thursday).
 create table time_slots (
   slot_id     text primary key,                 -- e.g. MWF-0800, TR-0930, LAB-T-1300, EVE-M-1800
-  days        text not null check (days ~ '^[MTWRFS]+$'),
+  days        text not null check (days ~ '^[MTWRFSU]+$'),   -- U = Sunday
   start_time  time not null,
   end_time    time not null check (end_time > start_time),
   kind        text not null check (kind in ('lecture', 'lab', 'evening')),
@@ -31,8 +31,9 @@ create table rooms (
   room_id     text primary key,                 -- e.g. SCI-201
   building_id text not null references buildings,
   capacity    integer not null check (capacity > 0),
-  room_type   text not null check (room_type in ('lecture', 'science_lab', 'computer_lab', 'nursing_sim', 'studio')),
-  is_active   boolean not null default true
+  room_type   text not null check (room_type in ('lecture', 'science_lab', 'computer_lab', 'nursing_sim', 'studio', 'clinical_site', 'off_site')),
+  is_active   boolean not null default true,
+  estimated   text[] not null default '{}'      -- columns guessed rather than given, e.g. {capacity,room_type}
 );
 
 -- ---------- Faculty ----------
@@ -40,11 +41,12 @@ create table rooms (
 create table faculty (
   faculty_id      text primary key,
   name            text not null,
-  department_id   integer not null,             -- matches course_planning.departments (one subject per department)
+  department_id   integer,                      -- matches course_planning.departments (one subject per department); null = a subject the catalog has no department for
   employment      text not null check (employment in ('full_time', 'adjunct')),
   max_credit_load numeric(4,1) not null check (max_credit_load > 0),
   campus          text not null default 'Wichita',
-  is_active       boolean not null default true
+  is_active       boolean not null default true,
+  estimated       text[] not null default '{}'  -- columns guessed rather than given, e.g. {employment,max_credit_load}
 );
 
 -- A row qualifies a person for one course, or for a whole subject when course_id is null.
@@ -58,7 +60,7 @@ create table faculty_qualifications (
 -- 'unavailable' is a hard rule; 'preferred' is a soft rule.
 create table faculty_availability (
   faculty_id text not null references faculty,
-  days       text not null check (days ~ '^[MTWRFS]+$'),
+  days       text not null check (days ~ '^[MTWRFSU]+$'),
   start_time time not null,
   end_time   time not null check (end_time > start_time),
   kind       text not null check (kind in ('unavailable', 'preferred'))
@@ -77,10 +79,36 @@ create table sections (
   delivery_mode      text not null check (delivery_mode in ('IN_PERSON', 'ONLINE_ASYNC', 'ONLINE_LIVE', 'HYBRID', 'ARRANGED')),
   campus             text not null default 'Wichita',
   slot_kind          text check (slot_kind in ('lecture', 'lab')),   -- null = no meeting time (ONLINE_ASYNC, ARRANGED); lecture sections may also use evening slots
-  required_room_type text check (required_room_type in ('lecture', 'science_lab', 'computer_lab', 'nursing_sim', 'studio')), -- null = no room
+  required_room_type text check (required_room_type in ('lecture', 'science_lab', 'computer_lab', 'nursing_sim', 'studio', 'clinical_site', 'off_site')), -- null = no room
   linked_section_id  text references sections,  -- a lab points at its lecture section
   fixed_faculty_id   text references faculty,   -- set when a chair has already assigned someone
+  subterm            text,                      -- part of term as the university codes it: 0 full term, 18 first 8 weeks, 28 second 8 weeks
+  first_date         date,                      -- null = the whole term; sections whose dates don't overlap never clash
+  last_date          date,
+  enrolled           integer,                   -- students enrolled, when known
+  estimated          text[] not null default '{}',  -- columns guessed rather than given, e.g. {seat_cap}
   unique (term_id, course_id, section_code)
+);
+
+-- The university's own section list, one row per section as delivered (cleaned of padding, nothing dropped).
+create table source_sections (
+  term_id       text not null,
+  section_id    text not null,
+  source_file   text not null,
+  subterm       text,
+  division      text,
+  course_title  text,
+  instructor    text,                           -- null = 'Staff TBD'
+  enrolled      integer,
+  first_date    date,
+  last_date     date,
+  location      text,
+  building      text,
+  room          text,
+  begin_times   text,                           -- as given; several meetings are separated by ';'
+  end_times     text,
+  days          text,
+  primary key (term_id, section_id)
 );
 
 -- Lecture and lab pairs, parsed from the catalog's corequisite text.
