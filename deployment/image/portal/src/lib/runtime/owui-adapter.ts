@@ -23,6 +23,18 @@ type Obj = Record<string, unknown>;
 const asObj = (v: unknown): Obj | undefined => (v && typeof v === "object" ? (v as Obj) : undefined);
 const toolLabel = (name: string) => `Used ${name.replace(/_/g, " ")}`;
 
+/** Opens an empty chat for one turn as the runtime account and returns its id, or null if Open WebUI would not create one. */
+async function openChat(token: string | null, model: string): Promise<string | null> {
+  if (!token) return null;
+  const res = await fetch(`${owuiBase()}/api/v1/chats/new`, {
+    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, cache: "no-store",
+    body: JSON.stringify({ chat: { title: "Digi turn", models: [model], messages: [], history: { messages: {}, currentId: null } } }),
+  }).catch(() => null);
+  if (!res?.ok) { console.error("runtime would not open a chat", res?.status); return null; }
+  const j = (await res.json().catch(() => null)) as { id?: string } | null;
+  return j?.id ?? null;
+}
+
 export class OwuiRuntimeAdapter implements RuntimeAdapter {
   readonly id = "owui" as const;
 
@@ -104,6 +116,10 @@ export class OwuiRuntimeAdapter implements RuntimeAdapter {
       return;
     }
 
+    // Open WebUI 0.13 refuses a turn whose chat_id it holds no chat for (404), so each turn opens a chat there first and deletes it afterwards.
+    const chatId = await openChat(account.token, req.model);
+    if (!chatId) { yield { type: "failed", message: "The AI service would not start a conversation. Please try again." }; return; }
+
     const queue: RuntimeEvent[] = [];
     let wake: (() => void) | null = null;
     let finished = false;
@@ -116,7 +132,7 @@ export class OwuiRuntimeAdapter implements RuntimeAdapter {
     if (req.signal?.aborted) aborted = true;
 
     account.inflight++;
-    account.listeners.set(req.executionId, (e: OwuiEvent) => {
+    account.listeners.set(chatId, (e: OwuiEvent) => {
       if (e.__disconnect) { push({ type: "failed", message: "The connection to the AI service was lost. Please try again." }); return; }
       const t = e.data?.type, p = e.data?.data;
       if (!p) return;
@@ -155,7 +171,7 @@ export class OwuiRuntimeAdapter implements RuntimeAdapter {
         method: "POST",
         headers: { Authorization: `Bearer ${account.token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: req.model, stream: true, tool_ids: req.toolIds, chat_id: req.executionId,
+          model: req.model, stream: true, tool_ids: req.toolIds, chat_id: chatId,
           id: crypto.randomUUID(), session_id: account.socket?.id, messages: req.messages,
         }),
         signal: req.signal,
@@ -184,11 +200,14 @@ export class OwuiRuntimeAdapter implements RuntimeAdapter {
     } finally {
       clearTimeout(timer);
       req.signal?.removeEventListener("abort", onAbort);
-      account.listeners.delete(req.executionId);
+      account.listeners.delete(chatId);
       account.inflight--;
-      if (!finished && taskIds.length && account.token) {
-        for (const id of taskIds) void fetch(`${owuiBase()}/api/tasks/stop/${id}`, { method: "POST", headers: { Authorization: `Bearer ${account.token}` } }).catch(() => undefined);
+      const token = account.token;
+      if (!finished && taskIds.length && token) {
+        for (const id of taskIds) void fetch(`${owuiBase()}/api/tasks/stop/${id}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }).catch(() => undefined);
       }
+      // The conversation lives in Digi; the chat in Open WebUI was only the vehicle for this turn.
+      if (token) void fetch(`${owuiBase()}/api/v1/chats/${chatId}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).catch(() => undefined);
     }
   }
 
