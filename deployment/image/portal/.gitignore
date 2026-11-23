@@ -2,3 +2,7 @@ node_modules/
 .next/
 next-env.d.ts
 tsconfig.tsbuildinfo
+
+# local secrets (never in git or the image)
+.env*
+!.env.example

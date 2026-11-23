@@ -19,6 +19,7 @@ export const P = {
   aiManage: "ai.manage",
   approvalsDecide: "approvals.decide",
   mcpManage: "mcp.manage",
+  schedulingView: "scheduling.view",
 } as const;
 
 export type PermissionCode = (typeof P)[keyof typeof P];

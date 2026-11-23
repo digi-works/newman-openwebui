@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Brain, CalendarDays, ChevronsUpDown, CircleHelp, Download, History, House, KeyRound, LogOut, Mail, MessageSquare, Plus, Settings, ShieldCheck, Sparkles, UserRound, Users, UsersRound } from "lucide-react";
+import { Brain, CalendarClock, CalendarDays, ChevronsUpDown, CircleHelp, Download, History, House, KeyRound, LogOut, Mail, MessageSquare, Plus, Settings, ShieldCheck, Sparkles, TriangleAlert, UserRound, Users, UsersRound } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarRail,
@@ -21,6 +21,7 @@ export function AppSidebar({ brand, user }: { brand: Brand; user: SessionUser })
   const { chats } = useStore();
   const recent = visibleChats(chats).slice(0, 5);
   const inSettings = pathname.startsWith("/settings");
+  const inScheduling = pathname.startsWith("/scheduling");
   const has = (code: Parameters<typeof hasPermission>[1]) => hasPermission(user.permissions, code);
 
   return (
@@ -65,6 +66,22 @@ export function AppSidebar({ brand, user }: { brand: Brand; user: SessionUser })
                 <SidebarMenuButton tooltip="Approvals" isActive={pathname.startsWith("/approvals")} render={<Link href="/approvals" />}>
                   <ShieldCheck /> <span>Approvals</span>
                 </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+            {has(P.schedulingView) && (
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip="Scheduling" isActive={inScheduling} render={<Link href="/scheduling" />}>
+                  <CalendarClock /> <span>Scheduling</span>
+                </SidebarMenuButton>
+                {inScheduling && (
+                  <SidebarMenuSub>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton isActive={pathname.startsWith("/scheduling/issues")} render={<Link href="/scheduling/issues" />}>
+                        <TriangleAlert /> <span>Issues</span>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  </SidebarMenuSub>
+                )}
               </SidebarMenuItem>
             )}
             <SidebarMenuItem>
