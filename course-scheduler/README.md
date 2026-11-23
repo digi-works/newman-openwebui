@@ -12,6 +12,7 @@ Plan: `ND-Course Scheduling Agent Design and Approach` and the one-page `ND-Cour
 | 0 | Agree the basics: decisions, data tables, open questions | Done (decisions below still need the manager's yes) |
 | 1 | Build the mock data in Neon | **Done**: `mock/build_mock.py`, results in [`mock/REPORT.md`](mock/REPORT.md) |
 | 2 | Checker: lists every broken rule in any timetable | **Done**: `scheduler/checker.py`, 27 rules, tests in `tests/` |
+| A | Checker knows Newman's practices, labels guessed data, suggests checked fixes | **Done**: `scheduler/together.py`, `scheduler/fixes.py`, `scheduler/report.py`; results in [`real/CHECK_REPORT.md`](real/CHECK_REPORT.md) |
 | 3 | Solver: OR-Tools CP-SAT | Next |
 | 4 | Service (API) around the engine | |
 | 5 | Real data | **Started**: Fall 2026 sections from the university loaded by `real/load_real.py`, results in [`real/REPORT.md`](real/REPORT.md) |
@@ -141,9 +142,28 @@ The file holds instructor names and enrollment, so it stays out of git; pass its
 Sections in different parts of the term (first and second 8 weeks) never clash. Partner colleges and hospitals are whole sites, not single rooms,
 so they are never double-booked.
 
-**What the checker says about the real timetable** (run 1): most findings are practices our rules don't model yet, not mistakes.
-- One instructor teaching several sections at the same time and place (stacked courses, or one class shared across sites): about 100 of
-  the 128 instructor clashes and 35 of the 36 room clashes.
-- Instructors of record for hospital clinicals (RADT, NSG) overlapping their own classes: most of the rest.
-- 37 sections with no instructor ("Staff TBD"), 5 that meet at a set time with no room named.
-- One true room clash: `MUS 4083 A` and `THEO 1033 B`, both Tue/Thu 9:25 in `DEMAT D275`.
+**What the checker says about the real timetable** (run 1): see [`real/CHECK_REPORT.md`](real/CHECK_REPORT.md). In short: 8 real clashes
+(2 room, 6 instructor), each with checked fixes where one exists; 42 gaps in the data (37 sections with no instructor, 5 with no room);
+69 findings that rest on guessed student groups; and the Newman practices below, which are notes, not problems. Before step A the same
+timetable showed 240 hard findings. The one true room clash: `MUS 4083 A` and `THEO 1033 B`, both Tue/Thu 9:25 in `DEMAT D275`.
+
+## Step A: Newman's practices, guessed data and fixes
+
+The checker now tells real problems apart from how Newman works and from gaps in our data.
+
+| | What | Where |
+|---|---|---|
+| Taught together | One instructor teaching several sections at one time as one meeting: stacked or cross-listed courses in one room, or one class reaching a partner college or a live online section. Found in the timetable as run (`together.infer`) and stored in `combined_sections` (source `inferred`; the registrar can add more). Only sections listed there may share an instructor and a room at the same time, and only at the same time slot with the same instructor; their credits count once. Reported as the note `TAUGHT_TOGETHER`. | `scheduler/together.py`, `checker.Practices` |
+| Clinical supervision | A hospital clinical doesn't block its instructor of record (students are with hospital staff). Reported as the note `CLINICAL_SUPERVISION`. | `checker.Practices` |
+| Guessed data | Every finding has `basis`: `estimated` when it rests on a guess (room size or type, seat cap, student groups, mock availability, maximum load), otherwise `real`. | `checker.Violation.basis` |
+| Fixes | For room clashes, missing rooms, rooms that don't fit, instructor clashes, a lab over its lecture and missing instructors: free rooms, free times or free qualified instructors. Each fix is applied to the whole timetable and checked before it is offered: it must remove the finding and add no new hard finding. Nothing is changed. | `scheduler/fixes.py` |
+| Report | A plain-words report with no instructor names, safe to share. | `scheduler/report.py` |
+
+```bash
+.venv/bin/python -m scheduler.check --run 1 --fixes           # findings with checked fixes
+.venv/bin/python -m scheduler.check --run 1 --strict          # count taught-together and clinical overlaps as clashes again
+.venv/bin/python -m scheduler.check --run 1 --save            # store findings, basis and fixes in rule_violations (for the Issues screen)
+.venv/bin/python -m scheduler.report --run 1                  # writes real/CHECK_REPORT.md
+```
+
+After changing `db/001_schema.sql`, reload with `real/load_real.py ... --rebuild`: it recreates the schema and fills `combined_sections`.

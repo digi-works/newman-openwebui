@@ -118,7 +118,7 @@ def test_back_to_back_slots_do_not_overlap():
 
 
 def test_every_rule_has_a_severity_and_reason():
-    assert all(sev in ("hard", "soft") and reason for sev, reason in RULES.values())
+    assert all(sev in ("hard", "soft", "note") and reason for sev, reason in RULES.values())
 
 
 def test_sections_in_different_halves_of_the_term_never_clash():

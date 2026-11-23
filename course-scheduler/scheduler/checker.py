@@ -1,7 +1,8 @@
 """Step 2: the checker. Takes any timetable (from the solver, a planner's edits or a hand-made file) and lists every broken rule.
 
-Hard rules must never be broken; soft rules are preferences the solver tries to meet. Each finding names the rule, the sections
-involved and a plain reason, so it can be shown to a planner as is.
+Hard rules must never be broken; soft rules are preferences the solver tries to meet. Notes are Newman practices the checker
+recognises and does not count as problems (sections taught together, clinical supervision); each can be switched off in Practices.
+Each finding names the rule, the sections involved, a plain reason, and whether it rests on real or guessed data.
 """
 from collections import defaultdict
 from dataclasses import dataclass
@@ -9,7 +10,15 @@ from itertools import combinations
 
 from .model import Assignment, Term
 
-HARD, SOFT = "hard", "soft"
+HARD, SOFT, NOTE = "hard", "soft", "note"
+REAL, ESTIMATED = "real", "estimated"
+
+
+@dataclass(frozen=True)
+class Practices:
+    """How Newman works. On by default; switch one off to treat it as a clash again."""
+    taught_together: bool = True        # sections in one combine group, same instructor and time: one meeting, not a clash
+    clinical_supervision: bool = True   # a hospital clinical doesn't block its instructor of record: students are with hospital staff
 
 # rule_code -> (severity, what it means)
 RULES = {
@@ -40,6 +49,8 @@ RULES = {
     "GROUP_CHECK_LIMIT":     (SOFT, "The group has too many combinations to check fully; the pairwise check found no clash."),
     "REQUIRED_IN_EVENING":   (SOFT, "A required course is in an evening slot."),
     "PREFERENCE_MISSED":     (SOFT, "The section is outside the faculty member's preferred times."),
+    "TAUGHT_TOGETHER":       (NOTE, "Sections taught together: one instructor, one time, one meeting. Not a clash."),
+    "CLINICAL_SUPERVISION":  (NOTE, "The instructor of record for a hospital clinical overlaps another of their sections. Students are with hospital staff, so not a clash."),
 }
 
 SLOT_FITS = {"lecture": {"lecture", "evening"}, "lab": {"lab"}}
@@ -57,18 +68,19 @@ class Violation:
     rule_code: str
     section_ids: tuple
     detail: str
+    basis: str = REAL   # ESTIMATED when the finding rests on guessed data (room sizes, student groups, mock availability, loads)
 
     @property
     def severity(self) -> str:
         return RULES[self.rule_code][0]
 
 
-def check(term: Term, assignments: list, partial: bool = False) -> list:
+def check(term: Term, assignments: list, partial: bool = False, practices: Practices = Practices()) -> list:
     """Every broken rule in the timetable. partial=True checks only the sections listed (for a planner's edit, or a hand-made sample)."""
     out = []
 
-    def bad(code, ids, detail):
-        out.append(Violation(code, tuple(sorted(ids)), detail))
+    def bad(code, ids, detail, guessed=False):
+        out.append(Violation(code, tuple(sorted(ids)), detail, ESTIMATED if guessed else REAL))
 
     # ---- one assignment per section ----
     by_sec = {}
@@ -108,9 +120,11 @@ def check(term: Term, assignments: list, partial: bool = False) -> list:
                 bad("MISSING_ROOM", [sid], f"{sid} needs a {s.required_room_type} room.")
             elif room:
                 if room.room_type != s.required_room_type:
-                    bad("ROOM_TYPE_MISMATCH", [sid], f"{sid} needs a {s.required_room_type} room; {room.room_id} is a {room.room_type}.")
+                    bad("ROOM_TYPE_MISMATCH", [sid], f"{sid} needs a {s.required_room_type} room; {room.room_id} is a {room.room_type}.",
+                        "room_type" in room.estimated or "required_room_type" in s.estimated)
                 if room.capacity < s.seat_cap:
-                    bad("ROOM_TOO_SMALL", [sid], f"{sid} has {s.seat_cap} seats; {room.room_id} holds {room.capacity}.")
+                    bad("ROOM_TOO_SMALL", [sid], f"{sid} has {s.seat_cap} seats; {room.room_id} holds {room.capacity}.",
+                        "capacity" in room.estimated or "seat_cap" in s.estimated)
                 if not room.is_active:
                     bad("ROOM_INACTIVE", [sid], f"{sid}: room {room.room_id} is not in use.")
         elif a.room_id:
@@ -131,24 +145,61 @@ def check(term: Term, assignments: list, partial: bool = False) -> list:
         if slot and room and room.room_type not in WHOLE_SITES: in_room[room.room_id].append((sid, slot))
         if fid: teaching[fid].append((sid, slot, s.credits))
     sec = term.sections
+    met_together = defaultdict(set)   # combine_id -> sections that met as one
+
+    def together(a, sa, b, sb):
+        """a and b are one meeting: same combine group, same time slot, same instructor."""
+        g = term.together.get(a)
+        if not (practices.taught_together and g and g == term.together.get(b) and sa.slot_id == sb.slot_id and placed[a][3] == placed[b][3]):
+            return False
+        met_together[g].update((a, b))
+        return True
+
+    reported = set()
+
+    def first_time(code, a, b):
+        """Report a clash once per pair of classes: sections taught together count as one class."""
+        unit = lambda x: (term.together.get(x) if practices.taught_together else None) or x
+        key = (code, *sorted((unit(a), unit(b))))
+        if key in reported: return False
+        reported.add(key); return True
+
+    def at_hospital(x):
+        r = placed[x][2]
+        return practices.clinical_supervision and r is not None and r.room_type == "clinical_site"
+
     for rid, items in sorted(in_room.items()):
         for (a, sa), (b, sb) in combinations(sorted(items), 2):
-            if _clash(sec[a], sa, sec[b], sb):
+            if _clash(sec[a], sa, sec[b], sb) and not together(a, sa, b, sb) and first_time("room", a, b):
                 bad("ROOM_DOUBLE_BOOKED", [a, b], f"{a} ({sa.slot_id}) and {b} ({sb.slot_id}) are both in {rid}.")
     for fid, items in sorted(teaching.items()):
         timed = sorted((sid, slot) for sid, slot, _ in items if slot)
+        mock = fid in term.mock_availability
         for (a, sa), (b, sb) in combinations(timed, 2):
-            if _clash(sec[a], sa, sec[b], sb):
+            if not _clash(sec[a], sa, sec[b], sb) or together(a, sa, b, sb) or not first_time("faculty", a, b):
+                continue
+            if at_hospital(a) or at_hospital(b):
+                bad("CLINICAL_SUPERVISION", [a, b], f"{fid} is instructor of record for {a} ({sa.slot_id}) and {b} ({sb.slot_id}); one is a hospital clinical.")
+            else:
                 bad("FACULTY_DOUBLE_BOOKED", [a, b], f"{fid} teaches {a} ({sa.slot_id}) and {b} ({sb.slot_id}) at the same time.")
         for sid, slot in timed:
             if any(w.overlaps(slot) for w in term.unavailable.get(fid, [])):
-                bad("FACULTY_UNAVAILABLE", [sid], f"{fid} cannot teach at {slot.slot_id} ({slot.days} {slot.start:%H:%M}).")
+                bad("FACULTY_UNAVAILABLE", [sid], f"{fid} cannot teach at {slot.slot_id} ({slot.days} {slot.start:%H:%M}).", mock)
             prefs = term.preferred.get(fid, [])
             if prefs and not any(w.contains(slot) for w in prefs):
-                bad("PREFERENCE_MISSED", [sid], f"{sid} at {slot.slot_id} is outside {fid}'s preferred times.")
-        load = sum(c for _, _, c in items)
+                bad("PREFERENCE_MISSED", [sid], f"{sid} at {slot.slot_id} is outside {fid}'s preferred times.", mock)
+        # sections taught together are one meeting, so their credits count once (the largest)
+        load, seen = 0.0, {}
+        for sid, _, c in items:
+            g = term.together.get(sid) if practices.taught_together else None
+            if g: seen[g] = max(seen.get(g, 0.0), c)
+            else: load += c
+        load += sum(seen.values())
         if load > term.faculty[fid].max_credit_load:
-            bad("FACULTY_OVERLOADED", [sid for sid, _, _ in items], f"{fid} has {load:g} credits; the maximum is {term.faculty[fid].max_credit_load:g}.")
+            bad("FACULTY_OVERLOADED", [sid for sid, _, _ in items], f"{fid} has {load:g} credits; the maximum is {term.faculty[fid].max_credit_load:g}.",
+                "max_credit_load" in term.faculty[fid].estimated)
+    for g, ids in sorted(met_together.items()):
+        bad("TAUGHT_TOGETHER", ids, f"{', '.join(sorted(ids))} meet together as one class ({g}).")
 
     # ---- a lab and its lecture ----
     for sid, (s, slot, _, _) in sorted(placed.items()):
@@ -161,25 +212,27 @@ def check(term: Term, assignments: list, partial: bool = False) -> list:
     for sid, (s, slot, _, _) in placed.items():
         if slot: timed_by_course[s.course_id].append((sid, slot, s))
     in_a_group = set()
+    real_courses = {c for gid, (_, cids) in term.groups.items() if term.group_source.get(gid, "mock_level") != "mock_level" for c in cids}
     for gid, (label, cids) in sorted(term.groups.items()):
         in_a_group.update(cids)
+        guessed = term.group_source.get(gid, "mock_level") == "mock_level"
         options = {c: sorted(timed_by_course[c]) for c in cids if timed_by_course.get(c)}
         if len(options) < 2: continue
         clashing = [(c1, c2) for c1, c2 in combinations(sorted(options), 2)
                     if all(_clash(s1, x, s2, y) for _, x, s1 in options[c1] for _, y, s2 in options[c2])]
         for c1, c2 in clashing:
             ids = [sid for sid, _, _ in options[c1] + options[c2]]
-            bad("GROUP_OVERLAP", ids, f"{label}: every section of {c1} overlaps every section of {c2}.")
+            bad("GROUP_OVERLAP", ids, f"{label}: every section of {c1} overlaps every section of {c2}.", guessed)
         if clashing: continue
         found = _clash_free(options)
         if found is False:
-            bad("GROUP_NO_COMBINATION", [sid for c in options for sid, _, _ in options[c]], f"{label}: no clash-free choice of one section per course ({len(options)} courses).")
+            bad("GROUP_NO_COMBINATION", [sid for c in options for sid, _, _ in options[c]], f"{label}: no clash-free choice of one section per course ({len(options)} courses).", guessed)
         elif found is None:
-            bad("GROUP_CHECK_LIMIT", [], f"{label}: {len(options)} courses, too many combinations to check fully.")
+            bad("GROUP_CHECK_LIMIT", [], f"{label}: {len(options)} courses, too many combinations to check fully.", guessed)
 
     for sid, (s, slot, _, _) in sorted(placed.items()):
         if slot and slot.kind == "evening" and s.course_id in in_a_group:
-            bad("REQUIRED_IN_EVENING", [sid], f"{sid} is a required course in evening slot {slot.slot_id}.")
+            bad("REQUIRED_IN_EVENING", [sid], f"{sid} is a required course in evening slot {slot.slot_id}.", s.course_id not in real_courses)
     return out
 
 
@@ -211,4 +264,5 @@ class _Limit(Exception):
 def summary(violations: list) -> dict:
     counts = defaultdict(int)
     for v in violations: counts[v.rule_code] += 1
-    return dict(sorted(counts.items(), key=lambda kv: (RULES[kv[0]][0] != HARD, kv[0])))
+    order = {HARD: 0, SOFT: 1, NOTE: 2}
+    return dict(sorted(counts.items(), key=lambda kv: (order[RULES[kv[0]][0]], kv[0])))

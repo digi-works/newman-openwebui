@@ -65,3 +65,20 @@ def test_checker_runs_on_the_real_timetable(db):
     # Mock availability is fitted around what people really teach, so the real timetable never breaks it.
     assert not found & {"ROOM_TOO_SMALL", "ROOM_TYPE_MISMATCH", "FACULTY_OVERLOADED", "FACULTY_NOT_QUALIFIED", "UNKNOWN_SLOT", "UNKNOWN_ROOM",
                         "FACULTY_UNAVAILABLE", "PREFERENCE_MISSED"}
+
+
+def test_newman_practices_turn_most_clashes_into_notes(db):
+    """Step A: sections taught together and clinical supervision are notes; what's left are real clashes, each found and explained."""
+    from scheduler.checker import ESTIMATED, Practices
+    from scheduler.fixes import fixes_for
+    cur, run_id, _ = db
+    term_id, rows = model.load_run(cur, run_id)
+    term = model.load_term(cur, term_id)
+    assert term.together, "combined_sections is empty: reload with real/load_real.py --rebuild"
+    found = check(term, rows)
+    strict = check(term, rows, practices=Practices(False, False))
+    clashes = [v for v in found if v.rule_code in ("ROOM_DOUBLE_BOOKED", "FACULTY_DOUBLE_BOOKED")]
+    assert len(clashes) < len([v for v in strict if v.rule_code in ("ROOM_DOUBLE_BOOKED", "FACULTY_DOUBLE_BOOKED")]) / 10
+    real_room = [v for v in clashes if v.section_ids == ("2026FA-MUS4083-A", "2026FA-THEO1033-B")]
+    assert real_room and fixes_for(term, rows, real_room[0])   # the one true room clash is still found, with a checked fix
+    assert all(v.basis == ESTIMATED for v in found if v.rule_code.startswith("GROUP_"))

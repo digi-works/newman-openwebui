@@ -23,6 +23,9 @@ HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "mock"))
 from build_mock import database_url, how_it_meets   # noqa: E402  (same room-type rules as the mock, same .env handling)
+sys.path.insert(0, str(ROOT))
+from scheduler import together   # noqa: E402
+from scheduler.model import load_run, load_term   # noqa: E402
 
 TERM_CODES = {10: "FA", 20: "SP", 30: "SU"}
 CAMPUS = {"NU": "Wichita", "OLN": "Online", None: "Unknown"}
@@ -304,6 +307,11 @@ def write(cur, data, rebuild):
                          (t, data["digest"], psycopg.types.json.Jsonb({"source_file": data["file"]}), ACTUAL, placed, len(data["actual"]) - placed)).fetchone()[0]
     cur.executemany(f"insert into {cs}schedule_assignments (run_id, section_id, slot_id, room_id, faculty_id, placed, reason) values (%s, %s, %s, %s, %s, %s, %s)",
                     [(run_id, *a) for a in data["actual"]])
+    # sections taught together (stacked courses, one class at several sites), found in the timetable as run
+    term_id, rows = load_run(cur, run_id)
+    combined = together.infer(load_term(cur, term_id), rows)
+    cur.executemany(f"insert into {cs}combined_sections (combine_id, section_id, kind, source) values (%s, %s, %s, 'inferred')", combined)
+    data["combined"] = combined
     return run_id
 
 
@@ -319,7 +327,9 @@ def main():
                 print(f"dry run: {len(data['sections'])} {data['term']} sections parsed; nothing written to Neon; see real/REPORT.md"); return
             run_id = write(cur, data, "--rebuild" in sys.argv)
         conn.commit()
-    print(f"course_scheduling loaded with {data['term']} from {data['file']}; the timetable as run is solver run {run_id}; see real/REPORT.md")
+    n = len({c for c, _, _ in data["combined"]})
+    print(f"course_scheduling loaded with {data['term']} from {data['file']}; the timetable as run is solver run {run_id}; "
+          f"{n} groups of sections taught together ({len(data['combined'])} sections); see real/REPORT.md")
 
 
 if __name__ == "__main__":

@@ -164,13 +164,24 @@ create table schedule_assignments (
 );
 
 -- What the checker finds. run_id is null when checking a hand-made or edited timetable.
+-- Sections taught together: one instructor teaching several sections at one time as one meeting (stacked or cross-listed courses in one room,
+-- or one class reaching several sites). Not a clash. Inferred from the timetable as run, or set by the registrar.
+create table combined_sections (
+  combine_id   text not null,                   -- e.g. 2026FA-TT-007
+  section_id   text primary key references sections on delete cascade,
+  kind         text not null check (kind in ('same_room', 'multi_site')),
+  source       text not null check (source in ('inferred', 'registrar'))
+);
+
 create table rule_violations (
   violation_id bigint generated always as identity primary key,
   run_id       bigint references schedule_runs on delete cascade,
   rule_code    text not null,                   -- e.g. ROOM_DOUBLE_BOOKED, GROUP_OVERLAP, ROOM_TOO_SMALL
-  severity     text not null check (severity in ('hard', 'soft')),
+  severity     text not null check (severity in ('hard', 'soft', 'note')),   -- note = a Newman practice the checker recognised, not a problem
   section_ids  text[] not null,
-  detail       text not null
+  detail       text not null,
+  basis        text not null default 'real' check (basis in ('real', 'estimated')),   -- estimated = the finding rests on guessed data
+  fixes        jsonb not null default '[]'      -- suggested fixes, already checked: [{"text": ..., "changes": [{section_id, slot_id, room_id, faculty_id}]}]
 );
 
 commit;
