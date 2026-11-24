@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Brain, CalendarClock, CalendarDays, ChevronsUpDown, CircleHelp, Download, History, House, KeyRound, LogOut, Mail, MessageSquare, Plus, Settings, ShieldCheck, Sparkles, TriangleAlert, UserRound, Users, UsersRound } from "lucide-react";
+import { Brain, CalendarClock, CalendarDays, CalendarRange, ChevronsUpDown, CircleHelp, Download, History, House, KeyRound, LogOut, Mail, MessageSquare, Plus, Settings, ShieldCheck, Sparkles, TriangleAlert, UserRound, Users, UsersRound } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarRail,
@@ -78,6 +78,11 @@ export function AppSidebar({ brand, user }: { brand: Brand; user: SessionUser })
                     <SidebarMenuSubItem>
                       <SidebarMenuSubButton isActive={pathname.startsWith("/scheduling/issues")} render={<Link href="/scheduling/issues" />}>
                         <TriangleAlert /> <span>Issues</span>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton isActive={pathname.startsWith("/scheduling/timetable")} render={<Link href="/scheduling/timetable" />}>
+                        <CalendarRange /> <span>Timetable</span>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                   </SidebarMenuSub>

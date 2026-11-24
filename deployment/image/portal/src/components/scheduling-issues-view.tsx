@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Lightbulb, Loader2, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RunPicker } from "@/components/scheduling-run-picker";
 import type { Run, SectionInfo } from "@/lib/course-scheduling";
 import { type Category, type Finding, category, describe, group, sectionName, slotLabel } from "@/lib/scheduling-issues";
 import { cn } from "@/lib/utils";
@@ -144,16 +144,7 @@ export function SchedulingIssuesView(props: Props) {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <Header right={
-        <div className="flex flex-wrap gap-2">
-          {runs.map((r) => (
-            <Link key={r.id} href={`/scheduling/issues?run=${r.id}`}
-              className={cn("rounded-lg border px-3 py-1.5 text-sm", r.id === run.id ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-muted")}>
-              {r.label}
-            </Link>
-          ))}
-        </div>
-      } />
+      <Header right={<RunPicker runs={runs} run={run} href={(id) => `/scheduling/issues?run=${id}`} />} />
 
       {props.canGenerate && <GenerateBar run={run} />}
 
