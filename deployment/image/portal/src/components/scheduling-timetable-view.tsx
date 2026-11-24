@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Info, X } from "lucide-react";
+import { AlertTriangle, Download, Info, X } from "lucide-react";
 import { RunPicker } from "@/components/scheduling-run-picker";
 import { SegmentedTabs } from "@/components/segmented-tabs";
 import type { Run } from "@/lib/course-scheduling";
@@ -114,6 +114,11 @@ export function SchedulingTimetableView(props: Props) {
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex-1"><Title /></div>
         <RunPicker runs={runs} run={run} href={(id) => `/scheduling/timetable?run=${id}&view=${view}${key ? `&key=${encodeURIComponent(key)}` : ""}`} />
+        <a href={`/api/scheduling/runs/${run.id}/export`} download
+          className="inline-flex h-9 items-center gap-2 rounded-lg border bg-card px-3 text-sm font-medium hover:bg-muted"
+          title="Every section in this timetable, one row each; opens in Excel. A draft marks what changed.">
+          <Download className="size-4" /> Download for Excel
+        </a>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

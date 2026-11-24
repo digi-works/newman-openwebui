@@ -1,5 +1,6 @@
 import { Pool } from "pg";
-import type { Finding } from "./scheduling-issues";
+import { type Finding, ruleTitle } from "./scheduling-issues";
+import { fileName, runLabels, toCsv } from "./timetable-export";
 import type { Meeting } from "./timetable";
 
 /**
@@ -41,16 +42,14 @@ export type SectionInfo = {
 
 const PLAIN = new Set(["Kept as run.", "As run by the university", "The file gives no time, room or instructor", "No set time: kept as given."]);
 
-/** Every timetable we have, newest first. The timetable as the university ran it is labelled as such. */
+/** Every timetable we have, newest first, with plain names (see runLabels). */
 export async function listRuns(): Promise<Run[]> {
   const { rows } = await pool().query(
     `select r.run_id, r.term_id, r.solver_version, r.created_at, count(v.violation_id)::int as n
        from course_scheduling.schedule_runs r left join course_scheduling.rule_violations v using (run_id)
       group by r.run_id order by r.run_id desc`);
-  return rows.map((r) => ({
-    id: Number(r.run_id), term: r.term_id, findings: r.n, checked: r.n > 0,
-    label: r.solver_version === "actual-timetable" ? `As run by Newman (${r.term_id})` : `Draft ${r.run_id} (${r.term_id})`,
-  }));
+  const names = runLabels(rows.map((r) => ({ id: Number(r.run_id), term: r.term_id, kind: r.solver_version })));
+  return rows.map((r) => ({ id: Number(r.run_id), term: r.term_id, findings: r.n, checked: r.n > 0, label: names.get(Number(r.run_id))!.label }));
 }
 
 /** The checker's saved findings for one timetable, and what the page needs to describe each section involved. */
@@ -125,4 +124,25 @@ export async function timetableFor(runId: number): Promise<{ rows: Meeting[]; gr
   const groups: Record<string, { label: string; courses: string[] }> = {};
   for (const g of grp.rows) groups[g.group_id] = { label: g.label, courses: g.courses };
   return { rows, groups };
+}
+
+/** A timetable as a CSV file for Excel. A draft is compared with the timetable it was made from. */
+export async function exportCsv(runId: number): Promise<{ name: string; csv: string } | null> {
+  const run = (await pool().query(`select term_id, solver_version, settings from course_scheduling.schedule_runs where run_id = $1`, [runId])).rows[0];
+  if (!run) return null;
+  const { rows } = await timetableFor(runId);
+  const fromRun = Number(run.settings?.from_run);
+  let base: Parameters<typeof toCsv>[1] = null;
+  if (Number.isInteger(fromRun) && fromRun > 0) {
+    const b = await pool().query(
+      `select a.section_id, t.days, to_char(t.start_time, 'HH24:MI') as st, a.room_id, f.name as instructor
+         from course_scheduling.schedule_assignments a
+         left join course_scheduling.time_slots t on t.slot_id = a.slot_id
+         left join course_scheduling.faculty f on f.faculty_id = a.faculty_id
+        where a.run_id = $1`, [fromRun]);
+    base = new Map(b.rows.map((r) => [r.section_id, { days: r.days, start: r.st, room: r.room_id, instructor: r.instructor }]));
+  }
+  const all = (await pool().query(`select run_id, term_id, solver_version from course_scheduling.schedule_runs where term_id = $1`, [run.term_id])).rows;
+  const me = runLabels(all.map((r) => ({ id: Number(r.run_id), term: r.term_id, kind: r.solver_version }))).get(runId)!;
+  return { name: fileName(me.label), csv: toCsv(rows, base, ruleTitle) };
 }

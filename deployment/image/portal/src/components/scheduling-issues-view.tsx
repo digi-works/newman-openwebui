@@ -35,7 +35,7 @@ function GenerateBar({ run }: { run: Run }) {
     setBusy(false);
     if (!res || !res.ok) { setMsg({ ok: false, text: out.error ?? "That did not work." }); return; }
     const s = out.summary;
-    setMsg({ ok: true, text: `Draft ${out.run_id} is ready in ${out.seconds}s: ${s.real_clashes} real clashes, ${out.moved_time.length + out.moved_room.length} changes, ${out.unplaced.length} not placed.` });
+    setMsg({ ok: true, text: `A new draft is ready in ${out.seconds}s: ${s.real_clashes} real clashes, ${out.moved_time.length + out.moved_room.length} changes, ${out.unplaced.length} not placed.` });
     router.push(`/scheduling/issues?run=${out.run_id}`);
     router.refresh();
   }
