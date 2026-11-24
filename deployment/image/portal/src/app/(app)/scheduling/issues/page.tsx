@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { SchedulingIssuesView } from "@/components/scheduling-issues-view";
 import { issuesFor, listRuns, schedulingEnabled } from "@/lib/course-scheduling";
 import { P } from "@/lib/permissions";
-import { requirePermission } from "@/lib/session";
+import { schedulerApiEnabled } from "@/lib/scheduler-api";
+import { can, requirePermission } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -25,5 +26,6 @@ export default async function SchedulingIssuesPage({ searchParams }: { searchPar
   const user = await requirePermission(P.schedulingView);
   if (!user) redirect("/");
   const data: Loaded | { state: "off" } = schedulingEnabled() ? await load(Number((await searchParams).run)) : { state: "off" };
-  return <div className="p-4 md:p-8"><SchedulingIssuesView {...data} /></div>;
+  const canGenerate = can(user, P.schedulingManage) && schedulerApiEnabled();
+  return <div className="p-4 md:p-8"><SchedulingIssuesView {...data} {...(data.state === "ok" ? { canGenerate } : {})} /></div>;
 }

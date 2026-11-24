@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Lightbulb, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChevronDown, Lightbulb, Loader2, Search, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Run, SectionInfo } from "@/lib/course-scheduling";
 import { type Category, type Finding, category, describe, group, sectionName, slotLabel } from "@/lib/scheduling-issues";
@@ -10,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 type Props =
   | { state: "off" | "empty" | "error" }
-  | { state: "ok"; runs: Run[]; run: Run; findings: Finding[]; sections: Record<string, SectionInfo> };
+  | { state: "ok"; runs: Run[]; run: Run; findings: Finding[]; sections: Record<string, SectionInfo>; canGenerate?: boolean };
 
 const TONE: Record<Category, string> = {
   clash: "text-red-700 dark:text-red-400",
@@ -19,6 +21,37 @@ const TONE: Record<Category, string> = {
   wish: "text-muted-foreground",
   practice: "text-emerald-700 dark:text-emerald-400",
 };
+
+/** Builds a new draft from the timetable on screen with the solver, then opens it. The timetable on screen is not changed. */
+function GenerateBar({ run }: { run: Run }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function go() {
+    setBusy(true); setMsg(null);
+    const res = await fetch("/api/scheduling/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fromRun: run.id }) }).catch(() => null);
+    const out = res ? await res.json().catch(() => ({})) : {};
+    setBusy(false);
+    if (!res || !res.ok) { setMsg({ ok: false, text: out.error ?? "That did not work." }); return; }
+    const s = out.summary;
+    setMsg({ ok: true, text: `Draft ${out.run_id} is ready in ${out.seconds}s: ${s.real_clashes} real clashes, ${out.moved_time.length + out.moved_room.length} changes, ${out.unplaced.length} not placed.` });
+    router.push(`/scheduling/issues?run=${out.run_id}`);
+    router.refresh();
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border bg-card px-4 py-3">
+      <Sparkles className="size-4 text-primary" />
+      <p className="flex-1 text-sm">
+        <span className="font-medium">Generate a draft</span>
+        <span className="text-muted-foreground"> from {run.label}: the solver fixes clashes and changes as little as it can. This timetable stays as it is.</span>
+      </p>
+      <Button size="sm" onClick={() => void go()} disabled={busy}>{busy ? <><Loader2 className="animate-spin" /> Building, up to a minute</> : "Generate draft"}</Button>
+      {msg && <p role={msg.ok ? "status" : "alert"} className={cn("basis-full text-sm", msg.ok ? "text-emerald-700 dark:text-emerald-400" : "text-destructive")}>{msg.text}</p>}
+    </div>
+  );
+}
 
 function Notice({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -122,6 +155,8 @@ export function SchedulingIssuesView(props: Props) {
         </div>
       } />
 
+      {props.canGenerate && <GenerateBar run={run} />}
+
       {!run.checked ? (
         <p className="rounded-2xl border bg-card px-5 py-10 text-center text-sm text-muted-foreground">This timetable hasn&apos;t been checked yet.</p>
       ) : (
@@ -145,7 +180,7 @@ export function SchedulingIssuesView(props: Props) {
           </div>
 
           {current.rules.length === 0 ? (
-            <p className="rounded-2xl border bg-card px-5 py-10 text-center text-sm text-muted-foreground">Nothing here.</p>
+            <p className="rounded-2xl border bg-card px-5 py-10 text-center text-sm text-muted-foreground">{tab === "clash" ? "No real clashes in this timetable." : "Nothing here."}</p>
           ) : (
             <div className="space-y-3">
               {current.rules.map(({ rule, title, items }) => {

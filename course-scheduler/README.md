@@ -14,7 +14,7 @@ Plan: `ND-Course Scheduling Agent Design and Approach` and the one-page `ND-Cour
 | 2 | Checker: lists every broken rule in any timetable | **Done**: `scheduler/checker.py`, 27 rules, tests in `tests/` |
 | A | Checker knows Newman's practices, labels guessed data, suggests checked fixes | **Done**: `scheduler/together.py`, `scheduler/fixes.py`, `scheduler/report.py`; results in [`real/CHECK_REPORT.md`](real/CHECK_REPORT.md) |
 | 3 (B) | Solver: OR-Tools CP-SAT | **Done**: `scheduler/solver.py`, `python -m scheduler.solve`; draft run 2 re-plans Fall 2026 with no real clash |
-| 4 | Service (API) around the engine | |
+| 4 (C) | Service (API) around the engine | **Done**: `service/app.py`; the portal's Scheduling > Issues has a Generate draft button |
 | 5 | Real data | **Started**: Fall 2026 sections from the university loaded by `real/load_real.py`, results in [`real/REPORT.md`](real/REPORT.md) |
 | 6 | Digi tool (`digi_scheduler`) | |
 | 7 | Scheduling screen (Calendar Hero 2.0) | |
@@ -191,5 +191,29 @@ with its findings and fixes, so it shows on Scheduling > Issues next to the time
 another room (the 5 that had no room got one), 2 not placed with a reason (a nursing sim lab that only one room can hold at that time, and
 an evening class whose instructor has no other free evening in the mock availability). `--fresh` also gives 0 clashes, moving about 170 sections.
 What the solver can't fix is data: 37 sections with no instructor, and the guessed student groups.
+
+## Step C: the service
+
+`service/app.py` (FastAPI) puts the solver and the checker behind a small web service for the portal, and later the Ask Digi agent.
+Every call except `/health` needs the header `X-Scheduler-Key` equal to `SCHEDULER_API_KEY`; it runs on a private network next to the portal.
+A timetable is never edited: a draft or an applied change is always a new run.
+
+| Call | Does |
+|---|---|
+| `GET /health` | Is the service up and can it reach the database |
+| `GET /runs` | Every timetable, newest first, with its count of real hard problems |
+| `POST /solve` `{from_run, fresh, time_limit, by}` | Builds a draft with the solver, checks it, saves it as a new run |
+| `POST /runs/{id}/check` | Checks a timetable again and stores its findings |
+| `POST /runs/{id}/try` `{changes}` | What a change would add and remove, saving nothing (for moving a section by hand, and for the agent) |
+| `POST /runs/{id}/apply` `{changes, reason, by}` | Saves the change as a new draft, only if it adds no hard problem (409 with the problems otherwise) |
+
+```bash
+SCHEDULER_API_KEY=... .venv/bin/uvicorn service.app:app --port 8090          # locally
+docker build -t course-scheduler:release .                                    # the image (Dockerfile here)
+```
+
+The portal calls it when `SCHEDULER_URL` and `SCHEDULER_API_KEY` are set (`deployment/image/portal/.env.local` locally; `deployment/aws/.env` on a
+server, where it runs as the `scheduler` service under the compose profile `scheduler`). Without them the Generate button is hidden.
+Making drafts needs the permission `scheduling.manage` ("Make timetable drafts").
 
 After changing `db/001_schema.sql`, reload with `real/load_real.py ... --rebuild`: it recreates the schema and fills `combined_sections`.

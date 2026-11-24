@@ -9,15 +9,14 @@ Nothing that exists is changed: a draft is a new run; the base run stays as it w
 """
 import argparse, sys
 from collections import Counter
-from dataclasses import asdict
 
 import psycopg
-from psycopg.types.json import Jsonb
 
-from .check import findings_with_fixes, save_findings
+from .check import findings_with_fixes
 from .checker import ESTIMATED, HARD, NOTE
 from .model import database_url, load_run, load_term
-from .solver import VERSION, Settings, input_hash, solve
+from .runs import save_solver_draft
+from .solver import Settings, solve
 
 
 def main(argv=None):
@@ -57,16 +56,7 @@ def main(argv=None):
             print(f"  ... {len(changed) - 30} more changes")
 
         if a.save:
-            run_id = cur.execute(
-                """insert into course_scheduling.schedule_runs (term_id, input_hash, settings, solver_version, status, plan_status, placed_count, unplaced_count, created_by)
-                   values (%s, %s, %s, %s, 'done', 'draft', %s, %s, 'scheduler.solve') returning run_id""",
-                (term_id, input_hash(term, base, settings), Jsonb({**asdict(settings), "from_run": a.from_run, "status": res.status,
-                 "seconds": round(res.seconds, 1), "moved_time": len(res.moved_time), "moved_room": len(res.moved_room)}),
-                 VERSION, res.placed, len(res.unplaced))).fetchone()[0]
-            cur.executemany("insert into course_scheduling.schedule_assignments (run_id, section_id, slot_id, room_id, faculty_id, placed, reason) values (%s, %s, %s, %s, %s, %s, %s)",
-                            [(run_id, r.section_id, r.slot_id, r.room_id, r.faculty_id, bool(r.slot_id or r.room_id or r.faculty_id), res.reasons.get(r.section_id))
-                             for r in res.assignments])
-            save_findings(cur, run_id, found, fixes)
+            run_id, _ = save_solver_draft(cur, term, base, res, a.from_run, "scheduler.solve")
             conn.commit()
             print(f"saved as draft run {run_id}, with {len(found)} findings")
     return 0 if not clashes else 1
