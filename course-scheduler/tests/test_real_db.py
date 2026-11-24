@@ -82,3 +82,19 @@ def test_newman_practices_turn_most_clashes_into_notes(db):
     real_room = [v for v in clashes if v.section_ids == ("2026FA-MUS4083-A", "2026FA-THEO1033-B")]
     assert real_room and fixes_for(term, rows, real_room[0])   # the one true room clash is still found, with a checked fix
     assert all(v.basis == ESTIMATED for v in found if v.rule_code.startswith("GROUP_"))
+
+
+def test_solver_replans_the_real_timetable_with_no_real_clash(db):
+    """Step B 'done when': from the timetable as run, the solver makes a draft with no room or instructor clash, changing little."""
+    pytest.importorskip("ortools")
+    from scheduler.checker import ESTIMATED
+    from scheduler.solver import Settings, solve
+    cur, run_id, _ = db
+    term_id, rows = model.load_run(cur, run_id)
+    term = model.load_term(cur, term_id)
+    res = solve(term, rows, Settings(time_limit=60))
+    assert res.status in ("optimal", "feasible")
+    found = check(term, res.assignments)
+    assert not [v for v in found if v.basis != ESTIMATED and v.rule_code in ("ROOM_DOUBLE_BOOKED", "FACULTY_DOUBLE_BOOKED", "LAB_LECTURE_OVERLAP",
+                                                                           "ROOM_TOO_SMALL", "ROOM_TYPE_MISMATCH", "FACULTY_UNAVAILABLE")]
+    assert len(set(res.moved_time) | set(res.moved_room)) < 20 and len(res.unplaced) < 5

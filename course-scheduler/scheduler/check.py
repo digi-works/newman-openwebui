@@ -19,6 +19,22 @@ from .fixes import _hard, fixes_for
 from .model import database_url, load_csv, load_run, load_term, mock_term
 
 
+def save_findings(cur, run_id, found, fixes):
+    """Replaces the stored findings of a run (run_id None = not tied to a run) with these, with their basis and checked fixes."""
+    if run_id is not None:
+        cur.execute("delete from course_scheduling.rule_violations where run_id = %s", (run_id,))
+    cur.executemany("insert into course_scheduling.rule_violations (run_id, rule_code, severity, section_ids, detail, basis, fixes) values (%s, %s, %s, %s, %s, %s, %s)",
+                    [(run_id, v.rule_code, v.severity, list(v.section_ids), v.detail, v.basis, Jsonb([f.as_json() for f in fixes.get(i, [])]))
+                     for i, v in enumerate(found)])
+
+
+def findings_with_fixes(term, assignments, practices):
+    """The checker's findings, and checked fixes for each hard one on real data."""
+    found = check(term, assignments, practices=practices)
+    before = _hard(found)
+    return found, {i: fixes_for(term, assignments, v, practices, before) for i, v in enumerate(found) if v.severity == HARD and v.basis != ESTIMATED}
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="scheduler.check", description="Lists every broken rule in a timetable.")
     src = p.add_mutually_exclusive_group(required=True)
@@ -66,11 +82,7 @@ def main(argv=None):
         if len(found) > len(shown): print(f"  ... {len(found) - len(shown)} more (use --all)")
 
         if a.save:
-            if a.run is not None:
-                cur.execute("delete from course_scheduling.rule_violations where run_id = %s", (a.run,))
-            cur.executemany("insert into course_scheduling.rule_violations (run_id, rule_code, severity, section_ids, detail, basis, fixes) values (%s, %s, %s, %s, %s, %s, %s)",
-                            [(a.run, v.rule_code, v.severity, list(v.section_ids), v.detail, v.basis, Jsonb([f.as_json() for f in fixes.get(i, [])]))
-                             for i, v in enumerate(found)])
+            save_findings(cur, a.run, found, fixes)
             conn.commit()
             print(f"\nsaved {len(found)} findings to course_scheduling.rule_violations" + (f" for run {a.run}" if a.run is not None else " (no run id)"))
     return 1 if hard else 0

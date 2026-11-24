@@ -13,7 +13,7 @@ Plan: `ND-Course Scheduling Agent Design and Approach` and the one-page `ND-Cour
 | 1 | Build the mock data in Neon | **Done**: `mock/build_mock.py`, results in [`mock/REPORT.md`](mock/REPORT.md) |
 | 2 | Checker: lists every broken rule in any timetable | **Done**: `scheduler/checker.py`, 27 rules, tests in `tests/` |
 | A | Checker knows Newman's practices, labels guessed data, suggests checked fixes | **Done**: `scheduler/together.py`, `scheduler/fixes.py`, `scheduler/report.py`; results in [`real/CHECK_REPORT.md`](real/CHECK_REPORT.md) |
-| 3 | Solver: OR-Tools CP-SAT | Next |
+| 3 (B) | Solver: OR-Tools CP-SAT | **Done**: `scheduler/solver.py`, `python -m scheduler.solve`; draft run 2 re-plans Fall 2026 with no real clash |
 | 4 | Service (API) around the engine | |
 | 5 | Real data | **Started**: Fall 2026 sections from the university loaded by `real/load_real.py`, results in [`real/REPORT.md`](real/REPORT.md) |
 | 6 | Digi tool (`digi_scheduler`) | |
@@ -165,5 +165,31 @@ The checker now tells real problems apart from how Newman works and from gaps in
 .venv/bin/python -m scheduler.check --run 1 --save            # store findings, basis and fixes in rule_violations (for the Issues screen)
 .venv/bin/python -m scheduler.report --run 1                  # writes real/CHECK_REPORT.md
 ```
+
+## Step B: the solver
+
+`scheduler/solver.py` (Google OR-Tools CP-SAT) gives every section that meets at a set time a time slot and a room. Instructors are kept
+as given (a chair chose them). It starts from a timetable, normally the one the university ran, and changes as little as it can.
+
+| | How |
+|---|---|
+| Hard (never broken) | No room or instructor double-booked (in the same weeks of the term); room of the right type and big enough; a lab never over its lecture; never at a time the instructor can't teach |
+| Kept | Each section's meeting pattern (days per week, minutes per meeting); sections taught together move as one class, in one room that holds them all; partner colleges and hospitals keep their time and site |
+| Soft (costs) | Changing a section's time (10) or room (3); a required course in the evening (2); outside an instructor's preferred times (1); two single-section required courses of one guessed student group overlapping (4) |
+| Can't fit | Left unplaced with a plain reason, never forced (cost 1000) |
+
+Every draft is then checked by the checker, and with `--save` stored as a new run (`solver_version = 'cpsat-1'`, `plan_status = 'draft'`)
+with its findings and fixes, so it shows on Scheduling > Issues next to the timetable as run. The base run is never changed.
+
+```bash
+.venv/bin/python -m scheduler.solve --from-run 1            # re-plan the timetable as run
+.venv/bin/python -m scheduler.solve --from-run 1 --fresh    # build from the same meeting patterns, keeping only instructors
+.venv/bin/python -m scheduler.solve --from-run 1 --save     # store it as a draft run
+```
+
+**On the real Fall 2026 data** (about 4 seconds, proven optimal): 0 room or instructor clashes, 3 sections moved to another time and 7 to
+another room (the 5 that had no room got one), 2 not placed with a reason (a nursing sim lab that only one room can hold at that time, and
+an evening class whose instructor has no other free evening in the mock availability). `--fresh` also gives 0 clashes, moving about 170 sections.
+What the solver can't fix is data: 37 sections with no instructor, and the guessed student groups.
 
 After changing `db/001_schema.sql`, reload with `real/load_real.py ... --rebuild`: it recreates the schema and fills `combined_sections`.

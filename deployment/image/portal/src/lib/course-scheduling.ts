@@ -19,7 +19,12 @@ function pool(): Pool {
 
 export type Run = { id: number; term: string; label: string; checked: boolean; findings: number };
 
-export type SectionInfo = { id: string; title: string; when: { days: string; start: string; end: string } | null; room: string | null; instructor: string | null; enrolled: number | null };
+export type SectionInfo = {
+  id: string; title: string; when: { days: string; start: string; end: string } | null; room: string | null; instructor: string | null; enrolled: number | null;
+  note: string | null;   // what the solver did with it in a draft ("New room (was none).", or why it couldn't be placed)
+};
+
+const PLAIN = new Set(["Kept as run.", "As run by the university", "The file gives no time, room or instructor", "No set time: kept as given."]);
 
 /** Every timetable we have, newest first. The timetable as the university ran it is labelled as such. */
 export async function listRuns(): Promise<Run[]> {
@@ -42,7 +47,7 @@ export async function issuesFor(runId: number): Promise<{ findings: Finding[]; s
   const sections: Record<string, SectionInfo> = {};
   if (ids.length) {
     const info = await pool().query(
-      `select s.section_id, coalesce(src.course_title, s.course_id) as title, s.enrolled, a.room_id, f.name as instructor,
+      `select s.section_id, coalesce(src.course_title, s.course_id) as title, s.enrolled, a.room_id, a.reason, f.name as instructor,
               t.days, to_char(t.start_time, 'HH24:MI') as st, to_char(t.end_time, 'HH24:MI') as et
          from course_scheduling.sections s
          left join course_scheduling.source_sections src on src.section_id = s.section_id
@@ -54,6 +59,7 @@ export async function issuesFor(runId: number): Promise<{ findings: Finding[]; s
       sections[r.section_id] = {
         id: r.section_id, title: r.title, enrolled: r.enrolled, room: r.room_id, instructor: r.instructor,
         when: r.days ? { days: r.days, start: r.st, end: r.et } : null,
+        note: r.reason && !PLAIN.has(r.reason) ? r.reason : null,
       };
     }
   }

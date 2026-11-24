@@ -11,6 +11,7 @@ describe("course scheduling issues page", () => {
     assert.equal(category(f("ROOM_DOUBLE_BOOKED", "hard")), "clash");
     assert.equal(category(f("MISSING_FACULTY", "hard")), "missing");
     assert.equal(category(f("NOT_PLACED", "hard")), "missing");
+    assert.equal(category(f("MISSING_SLOT", "hard")), "missing");   // a section the solver couldn't place
     assert.equal(category(f("GROUP_OVERLAP", "hard", "estimated")), "guessed");
     assert.equal(category(f("REQUIRED_IN_EVENING", "soft", "estimated")), "guessed");
     assert.equal(category(f("PREFERENCE_MISSED", "soft")), "wish");

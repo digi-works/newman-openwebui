@@ -17,7 +17,7 @@ export type Finding = {
 /** Where a finding goes on the page. */
 export type Category = "clash" | "missing" | "guessed" | "wish" | "practice";
 
-const MISSING = new Set(["NOT_PLACED", "MISSING_FACULTY", "MISSING_ROOM"]);
+const MISSING = new Set(["NOT_PLACED", "MISSING_FACULTY", "MISSING_ROOM", "MISSING_SLOT"]);
 
 export function category(f: Pick<Finding, "rule" | "severity" | "basis">): Category {
   if (f.severity === "note") return "practice";
@@ -28,7 +28,7 @@ export function category(f: Pick<Finding, "rule" | "severity" | "basis">): Categ
 
 export const CATEGORIES: { value: Category; label: string; blurb: string }[] = [
   { value: "clash", label: "Real clashes", blurb: "Two classes in one room, or one instructor in two places. These need fixing before a timetable is approved." },
-  { value: "missing", label: "Missing information", blurb: "Sections with no instructor yet, or a set time but no room. Only a person can fill these in." },
+  { value: "missing", label: "Missing information", blurb: "Sections with no instructor, room or time yet: gaps in the data, or sections the solver couldn't place (with its reason). A person needs to fill these in." },
   { value: "guessed", label: "Guessed data", blurb: "These rest on estimates (student groups from program requirements, room sizes). They can't be confirmed until Newman sends real data." },
   { value: "wish", label: "Wishes", blurb: "Preferences, not rules." },
   { value: "practice", label: "Newman practices", blurb: "How Newman works, recognised by the checker and not counted as problems." },
@@ -41,6 +41,7 @@ export const RULE_TITLE: Record<string, string> = {
   MISSING_FACULTY: "No instructor",
   NOT_PLACED: "No time, room or instructor",
   MISSING_ROOM: "No room",
+  MISSING_SLOT: "No time",
   ROOM_TOO_SMALL: "Room too small",
   ROOM_TYPE_MISMATCH: "Wrong kind of room",
   LAB_LECTURE_OVERLAP: "Lab over its own lecture",
@@ -78,6 +79,7 @@ const SAYS: Record<string, string> = {
   MISSING_FACULTY: "No instructor named yet (Staff TBD).",
   NOT_PLACED: "No time, room or instructor named yet. Most of these only need an instructor.",
   MISSING_ROOM: "Meets at a set time, but no room is named.",
+  MISSING_SLOT: "Needs a set time, but has none.",
   TAUGHT_TOGETHER: "One instructor teaches these at one time as one class: not a clash.",
   CLINICAL_SUPERVISION: "The instructor of record for a hospital clinical also teaches then. Students are with hospital staff, so it isn't a clash.",
 };

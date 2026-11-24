@@ -57,6 +57,7 @@ function SectionLine({ id, info }: { id: string; info?: SectionInfo }) {
           {info.enrolled != null ? ` · ${info.enrolled} enrolled` : ""}
         </span>
       )}
+      {info?.note && <span className="basis-full text-xs text-primary">Solver: {info.note.replace(/\b\d{4}[A-Z]{2}-[A-Z]+\d+-\w+\b/g, sectionName)}</span>}
     </div>
   );
 }

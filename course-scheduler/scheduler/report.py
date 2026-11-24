@@ -13,7 +13,7 @@ from .checker import ESTIMATED, HARD, NOTE, SOFT, check
 from .fixes import _hard, _label, fixes_for
 from .model import ROOT, database_url, load_run, load_term
 
-MISSING = {"NOT_PLACED", "MISSING_FACULTY", "MISSING_ROOM"}
+MISSING = {"NOT_PLACED", "MISSING_FACULTY", "MISSING_ROOM", "MISSING_SLOT"}
 
 
 def pretty(sid: str) -> str:
