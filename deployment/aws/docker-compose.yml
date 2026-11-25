@@ -50,6 +50,9 @@ services:
       MS_CLIENT_SECRET: "${MS_CLIENT_SECRET:-}"
       MAIL_FROM: "${MAIL_FROM:-}"
       BOOKING_MANAGER_EMAIL: "${BOOKING_MANAGER_EMAIL:-}"
+      COURSE_SCHEDULING_DATABASE_URL: "${COURSE_SCHEDULING_DATABASE_URL:-}"   # course scheduler's database (Neon); empty = Scheduling page says not connected
+      SCHEDULER_URL: "${SCHEDULER_URL:-}"            # http://scheduler:8090 when the scheduler service runs (profile "scheduler"); empty = no Generate button
+      SCHEDULER_API_KEY: "${SCHEDULER_API_KEY:-}"
       JOB_LEASE_SECONDS: "20"
       JOB_TEST_TYPES: "0"
       # first-time setup (scripts/bootstrap in README step 4)
@@ -61,6 +64,16 @@ services:
     volumes: ["portal-data:/data"]
     depends_on:
       postgres: { condition: service_healthy }
+    restart: unless-stopped
+
+  # Course scheduler service (solver + checker). Off unless started with:  docker compose --profile scheduler up -d
+  # Needs its image loaded first:  docker load -i ../image/course-scheduler.tar.gz
+  scheduler:
+    image: "${SCHEDULER_IMAGE:-course-scheduler:release}"
+    profiles: ["scheduler"]
+    environment:
+      DATABASE_URL: "${COURSE_SCHEDULING_DATABASE_URL:-}"
+      SCHEDULER_API_KEY: "${SCHEDULER_API_KEY:-}"   # the service refuses every call while this is empty
     restart: unless-stopped
 
   postgres:

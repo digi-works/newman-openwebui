@@ -68,6 +68,8 @@ export const API_METHODS: Record<string, string[]> = {
   "/api/platform/workers": ["GET", "POST"],
   "/api/platform/workers/[id]": ["GET", "PUT"],
   "/api/platform/workers/[id]/versions/[version]/publish": ["POST"],
+  "/api/scheduling/generate": ["POST"],
+  "/api/scheduling/runs/[id]/export": ["GET"],
   "/api/platform/workers/[id]/versions/[version]/request-review": ["POST"],
   "/api/platform/workers/[id]/versions/[version]/retire": ["POST"],
   "/api/platform/workers/[id]/versions/[version]/review": ["POST"],

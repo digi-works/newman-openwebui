@@ -6,3 +6,4 @@ tsconfig.tsbuildinfo
 server.js
 Dockerfile
 .dockerignore
+.env*
